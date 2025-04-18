@@ -1,4 +1,4 @@
-name: scoreboard-app
+name: scorify
 
 services:
   scoreboard:
@@ -44,14 +44,16 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - scoreboard-network
+      - scorify-network
 
 volumes:
   scoreboard_logs:
+    name: scorify_logs
     driver: local
 
 networks:
-  scoreboard-network:
+  scorify-network:
+    name: scorify_network
     driver: bridge
     ipam:
       driver: default
