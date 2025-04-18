@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siam Inline Super League Controller</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Siam Inline Super League Controller</h1>
+      <div class="header-controls">
+        <div id="keyboard-shortcuts-info" class="keyboard-shortcuts">
+          <span class="shortcut-badge" title="Spacebar: Start/Stop Timer">⌨️</span>
+          <div class="shortcuts-tooltip">
+            <p><kbd>Space</kbd> - Start/Stop Timer</p>
+            <p><kbd>↑</kbd> - Home Score +1</p>
+            <p><kbd>↓</kbd> - Home Score -1</p>
+            <p><kbd>→</kbd> - Away Score +1</p>
+            <p><kbd>←</kbd> - Away Score -1</p>
+          </div>
+        </div>
+        <div class="connection-status">
+          <span id="connection-indicator"></span>
+          <span id="connection-text">Disconnected</span>
+        </div>
+      </div>
+    </header>
+    
+    <main>
+      <section class="section game-info-section">
+        <h2>Game Information</h2>
+        <div class="game-date-time">
+          <div class="game-date-container">
+            <label for="game-date">Game Date:</label>
+            <input type="date" id="game-date" class="date-input">
+          </div>
+          <div class="game-time-container">
+            <label for="game-time">Game Time:</label>
+            <input type="time" id="game-time" class="time-input">
+          </div>
+          <button id="update-game-info" class="btn secondary">Update</button>
+        </div>
+        <div class="game-info-display">
+          <p>Current Game: <span id="current-game-info">Not set</span></p>
+        </div>
+      </section>
+      
+      <section class="section game-section">
+        <h2>Game Control</h2>
+        <div class="game-controls">
+          <button id="finish-game" class="btn special full-width">Finish Game</button>
+          <div class="game-result" id="game-result-display">
+            <!-- Game result will be displayed here after finishing -->
+          </div>
+          <button id="reset-game" class="btn danger full-width">Reset Game</button>
+        </div>
+        <div class="preview-link">
+          <a href="/overlay" target="_blank" class="btn secondary full-width">Open Overlay Preview</a>
+        </div>
+      </section>
+      
+      <section class="section timer-section">
+        <h2>Timer Control</h2>
+        <div class="timer-display">
+          <span id="timer-display">15:00</span>
+        </div>
+        <div class="controls timer-controls">
+          <button id="start-timer" class="btn primary">Start</button>
+          <button id="stop-timer" class="btn danger">Stop</button>
+          <button id="reset-timer" class="btn">Reset</button>
+          <button id="next-period" class="btn highlight">Next Period</button>
+        </div>
+        <div class="time-set">
+          <label for="time-minutes">Set Time:</label>
+          <div class="time-inputs">
+            <input type="number" id="time-minutes" min="0" max="99" value="15" class="time-input">
+            <span>:</span>
+            <input type="number" id="time-seconds" min="0" max="59" value="0" class="time-input">
+            <button id="set-time" class="btn">Set</button>
+          </div>
+        </div>
+        <div class="time-adjust">
+          <button id="add-minute" class="btn">+1:00</button>
+          <button id="sub-minute" class="btn">-1:00</button>
+          <button id="add-seconds" class="btn">+0:30</button>
+          <button id="sub-seconds" class="btn">-0:30</button>
+        </div>
+      </section>
+      
+      <section class="section teams-section">
+        <div class="team-control team1-control">
+          <h2>Home</h2>
+          <div class="team-presets">
+            <button class="btn preset-btn" data-team="team1" data-name="ASOKE ANTEATERS" data-logo="../assets/Anteaters_Official_Logo.png">Anteaters</button>
+            <button class="btn preset-btn" data-team="team1" data-name="BKK BAEBLADEZ" data-logo="../assets/Bladez_Official_Logo.png">Baebladez</button>
+            <button class="btn preset-btn" data-team="team1" data-name="RATTANAKORN RAIDERS" data-logo="../assets/Raiders_Official_Logo.png">Raiders</button>
+          </div>
+          <div class="team-name-control">
+            <label for="team1-name-input">Name:</label>
+            <input type="text" id="team1-name-input" value="ASOKE ANTEATERS" class="team-input">
+            <button id="update-team1-name" class="btn">Update</button>
+          </div>
+          <div class="team-logo-control">
+            <label for="team1-logo-input">Logo URL:</label>
+            <input type="text" id="team1-logo-input" value="../assets/Anteaters_Official_Logo.png" placeholder="Image URL or select file" class="team-input">
+            <input type="file" id="team1-logo-file" accept="image/*" class="file-input">
+            <button id="update-team1-logo" class="btn">Update</button>
+          </div>
+          <div class="score-control">
+            <label>Score:</label>
+            <div class="score-buttons">
+              <button id="team1-score-minus" class="btn score-btn">-</button>
+              <span id="team1-score-display" class="score-display">0</span>
+              <button id="team1-score-plus" class="btn score-btn">+</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="team-control team2-control">
+          <h2>Away</h2>
+          <div class="team-presets">
+            <button class="btn preset-btn" data-team="team2" data-name="ASOKE ANTEATERS" data-logo="../assets/Anteaters_Official_Logo.png">Anteaters</button>
+            <button class="btn preset-btn" data-team="team2" data-name="BKK BAEBLADEZ" data-logo="../assets/Bladez_Official_Logo.png">Baebladez</button>
+            <button class="btn preset-btn" data-team="team2" data-name="RATTANAKORN RAIDERS" data-logo="../assets/Raiders_Official_Logo.png">Raiders</button>
+          </div>
+          <div class="team-name-control">
+            <label for="team2-name-input">Name:</label>
+            <input type="text" id="team2-name-input" value="BKK BAEBLADEZ" class="team-input">
+            <button id="update-team2-name" class="btn">Update</button>
+          </div>
+          <div class="team-logo-control">
+            <label for="team2-logo-input">Logo URL:</label>
+            <input type="text" id="team2-logo-input" value="../assets/Bladez_Official_Logo.png" placeholder="Image URL or select file" class="team-input">
+            <input type="file" id="team2-logo-file" accept="image/*" class="file-input">
+            <button id="update-team2-logo" class="btn">Update</button>
+          </div>
+          <div class="score-control">
+            <label>Score:</label>
+            <div class="score-buttons">
+              <button id="team2-score-minus" class="btn score-btn">-</button>
+              <span id="team2-score-display" class="score-display">0</span>
+              <button id="team2-score-plus" class="btn score-btn">+</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="team-utility-controls">
+          <button id="switch-teams" class="btn utility-btn">↔️ Switch Home/Away Sides</button>
+        </div>
+      </section>
+      
+      <section class="section period-section">
+        <h2>Period</h2>
+        <div class="period-control">
+          <button id="period-minus" class="btn period-btn">-</button>
+          <span id="period-display" class="period-display">1</span>
+          <button id="period-plus" class="btn period-btn">+</button>
+        </div>
+        <div class="period-presets">
+          <button id="set-period-1" class="btn period-preset">1st</button>
+          <button id="set-period-2" class="btn period-preset">2nd</button>
+          <button id="set-period-3" class="btn period-preset">3rd</button>
+          <button id="set-period-so" class="btn period-preset">Shootout</button>
+        </div>
+      </section>
+      
+      <section class="section game-history-section">
+        <h2>Game History</h2>
+        <button id="load-history" class="btn secondary full-width">Refresh Game History</button>
+        <div class="game-history-container">
+          <table id="history-table" class="history-table">
+            <thead>
+              <tr>
+                <th style="width: 20%;">Date</th>
+                <th style="width: 35%;">Teams</th>
+                <th style="width: 15%;">Score</th>
+                <th style="width: 30%;">Result</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <!-- Game history records will be inserted here dynamically -->
+            </tbody>
+          </table>
+          <div id="no-history-message" class="no-history-message">
+            No game history available. Finish a game to record it.
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <footer>
+      <p>Siam Inline Super League Scoreboard v1.0</p>
+    </footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html> 

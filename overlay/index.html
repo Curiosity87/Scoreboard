@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siam Inline Super League Scoreboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="scoreboard">
+    <div class="team team1">
+      <div class="logo-container">
+        <img id="team1-logo" src="../assets/Anteaters_Official_Logo.png" alt="ASOKE Anteaters Logo">
+      </div>
+      <div class="team-name" id="team1-name">ANT</div>
+    </div>
+    
+    <div class="center-info">
+      <div class="timer" id="timer">15:00</div>
+      <div class="period" id="period">1st</div>
+      <div class="score" id="team1-score">1</div>
+      <div class="score" id="team2-score">1</div>
+    </div>
+    
+    <div class="team team2">
+      <div class="team-name" id="team2-name">RAI</div>
+      <div class="logo-container">
+        <img id="team2-logo" src="../assets/Raiders_Official_Logo.png" alt="Rattanakorn Raiders Logo">
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html> 
