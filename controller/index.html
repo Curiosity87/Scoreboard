@@ -29,38 +29,6 @@
     </header>
     
     <main>
-      <section class="section game-info-section">
-        <h2>Game Information</h2>
-        <div class="game-date-time">
-          <div class="game-date-container">
-            <label for="game-date">Game Date:</label>
-            <input type="date" id="game-date" class="date-input">
-          </div>
-          <div class="game-time-container">
-            <label for="game-time">Game Time:</label>
-            <input type="time" id="game-time" class="time-input">
-          </div>
-          <button id="update-game-info" class="btn secondary">Update</button>
-        </div>
-        <div class="game-info-display">
-          <p>Current Game: <span id="current-game-info">Not set</span></p>
-        </div>
-      </section>
-      
-      <section class="section game-section">
-        <h2>Game Control</h2>
-        <div class="game-controls">
-          <button id="finish-game" class="btn special full-width">Finish Game</button>
-          <div class="game-result" id="game-result-display">
-            <!-- Game result will be displayed here after finishing -->
-          </div>
-          <button id="reset-game" class="btn danger full-width">Reset Game</button>
-        </div>
-        <div class="preview-link">
-          <a href="/overlay" target="_blank" class="btn secondary full-width">Open Overlay Preview</a>
-        </div>
-      </section>
-      
       <section class="section timer-section">
         <h2>Timer Control</h2>
         <div class="timer-display">
@@ -68,7 +36,7 @@
         </div>
         <div class="controls timer-controls">
           <button id="start-timer" class="btn primary">Start</button>
-          <button id="stop-timer" class="btn danger">Stop</button>
+          <button id="stop-timer" class="btn danger">Pause</button>
           <button id="reset-timer" class="btn">Reset</button>
           <button id="next-period" class="btn highlight">Next Period</button>
         </div>
@@ -86,6 +54,49 @@
           <button id="sub-minute" class="btn">-1:00</button>
           <button id="add-seconds" class="btn">+0:30</button>
           <button id="sub-seconds" class="btn">-0:30</button>
+        </div>
+      </section>
+      
+      <section class="section game-config-section">
+        <h2>Game Configuration</h2>
+        <div class="game-config-controls">
+          <div class="config-control">
+            <label for="default-period-minutes">Minutes Per Period:</label>
+            <input type="number" id="default-period-minutes" min="1" max="60" value="15" class="config-input">
+          </div>
+          <div class="config-control">
+            <label for="default-total-periods">Total Periods:</label>
+            <input type="number" id="default-total-periods" min="1" max="10" value="3" class="config-input">
+          </div>
+          <div class="config-control">
+            <label for="default-shootout-minutes">Shootout Minutes:</label>
+            <input type="number" id="default-shootout-minutes" min="1" max="60" value="5" class="config-input">
+          </div>
+          
+          <button id="save-game-config" class="btn highlight full-width">Save Configuration</button>
+          <small class="form-hint">These settings will apply when resetting game or starting new periods</small>
+        </div>
+      </section>
+      
+      <section class="section game-section">
+        <h2>Game Control</h2>
+        <div class="game-controls">
+          <button id="finish-game" class="btn special full-width">Finish Game</button>
+          <div class="game-result" id="game-result-display">
+            <!-- Game result will be displayed here after finishing -->
+          </div>
+          <button id="reset-game" class="btn danger full-width">Reset Game</button>
+          
+          <a href="/overlay" target="_blank" class="btn secondary full-width">Open Overlay Preview</a>
+          
+          <!-- Penalty Display Controls -->
+          <div class="penalty-display-controls">
+            <h4>Penalty Display</h4>
+            <div class="penalty-toggle-buttons">
+              <button id="toggle-team1-penalty" class="btn penalty-toggle">Hide Home Penalty</button>
+              <button id="toggle-team2-penalty" class="btn penalty-toggle">Hide Away Penalty</button>
+            </div>
+          </div>
         </div>
       </section>
       
@@ -116,6 +127,29 @@
               <button id="team1-score-plus" class="btn score-btn">+</button>
             </div>
           </div>
+          
+          <!-- Toggle button for penalty timer -->
+          <button id="team1-penalty-toggle-btn" class="penalty-toggle-btn">Show Penalty Timer</button>
+          
+          <div class="penalty-control">
+            <h4>Penalty Timer</h4>
+            <div class="penalty-display">
+              <span id="team1-penalty-time">00:00</span>
+              <div class="penalty-status">
+                <input type="checkbox" id="team1-penalty-enabled">
+                <label for="team1-penalty-enabled">Active</label>
+              </div>
+            </div>
+            <div class="penalty-input">
+              <input type="number" id="team1-penalty-mins" min="0" max="99" value="2">
+              <span>:</span>
+              <input type="number" id="team1-penalty-secs" min="0" max="59" value="0">
+            </div>
+            <div class="penalty-buttons">
+              <button id="team1-penalty-set" class="btn">Set Penalty</button>
+              <button id="team1-penalty-clear" class="btn btn-danger">Clear</button>
+            </div>
+          </div>
         </div>
         
         <div class="team-control team2-control">
@@ -144,6 +178,29 @@
               <button id="team2-score-plus" class="btn score-btn">+</button>
             </div>
           </div>
+          
+          <!-- Toggle button for penalty timer -->
+          <button id="team2-penalty-toggle-btn" class="penalty-toggle-btn">Show Penalty Timer</button>
+          
+          <div class="penalty-control">
+            <h4>Penalty Timer</h4>
+            <div class="penalty-display">
+              <span id="team2-penalty-time">00:00</span>
+              <div class="penalty-status">
+                <input type="checkbox" id="team2-penalty-enabled">
+                <label for="team2-penalty-enabled">Active</label>
+              </div>
+            </div>
+            <div class="penalty-input">
+              <input type="number" id="team2-penalty-mins" min="0" max="99" value="2">
+              <span>:</span>
+              <input type="number" id="team2-penalty-secs" min="0" max="59" value="0">
+            </div>
+            <div class="penalty-buttons">
+              <button id="team2-penalty-set" class="btn">Set Penalty</button>
+              <button id="team2-penalty-clear" class="btn btn-danger">Clear</button>
+            </div>
+          </div>
         </div>
         
         <div class="team-utility-controls">
@@ -151,18 +208,46 @@
         </div>
       </section>
       
-      <section class="section period-section">
-        <h2>Period</h2>
-        <div class="period-control">
-          <button id="period-minus" class="btn period-btn">-</button>
-          <span id="period-display" class="period-display">1</span>
-          <button id="period-plus" class="btn period-btn">+</button>
-        </div>
-        <div class="period-presets">
-          <button id="set-period-1" class="btn period-preset">1st</button>
-          <button id="set-period-2" class="btn period-preset">2nd</button>
-          <button id="set-period-3" class="btn period-preset">3rd</button>
-          <button id="set-period-so" class="btn period-preset">Shootout</button>
+      <section class="section team-management-section">
+        <h2>Team Management</h2>
+        <button id="toggle-team-mgmt" class="btn secondary full-width">Show Team Management</button>
+        
+        <div id="team-management-panel" class="team-management-panel" style="display: none;">
+          <div class="team-form-container">
+            <h3 id="team-form-title">Add New Team</h3>
+            <form id="team-form">
+              <input type="hidden" id="team-id">
+              <div class="form-group">
+                <label for="team-name">Full Team Name:</label>
+                <input type="text" id="team-name" class="team-input" required>
+              </div>
+              <div class="form-group">
+                <label for="team-display-name">Display Name:</label>
+                <input type="text" id="team-display-name" class="team-input" required>
+              </div>
+              <div class="form-group">
+                <label for="team-abbreviation">Abbreviation (for long names):</label>
+                <input type="text" id="team-abbreviation" class="team-input" maxlength="5" placeholder="3-5 characters">
+                <small class="form-hint">Used in overlay when display name exceeds 15 characters</small>
+              </div>
+              <div class="form-group">
+                <label for="team-logo-url">Logo URL (optional):</label>
+                <input type="text" id="team-logo-url" placeholder="Image URL or select file" class="team-input">
+                <input type="file" id="team-logo-file" accept="image/*" class="file-input">
+              </div>
+              <div class="form-buttons">
+                <button type="submit" id="save-team" class="btn highlight">Save Team</button>
+                <button type="button" id="cancel-team" class="btn">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="team-list-container">
+            <h3>All Teams</h3>
+            <div id="teams-list" class="teams-list">
+              <!-- Teams will be loaded here -->
+            </div>
+          </div>
         </div>
       </section>
       
@@ -185,6 +270,96 @@
           </table>
           <div id="no-history-message" class="no-history-message">
             No game history available. Finish a game to record it.
+          </div>
+        </div>
+      </section>
+
+      <div class="section-row">
+        <section class="section game-info-section">
+          <div class="game-info-header">
+            <h2>Game Information</h2>
+            <button id="toggle-game-info" class="btn secondary full-width">Show Game Date/Time</button>
+          </div>
+          <div id="game-info-panel" class="game-info-panel" style="display: none;">
+            <div class="game-date-time">
+              <div class="game-date-container">
+                <label for="game-date">Game Date:</label>
+                <input type="date" id="game-date" class="date-input">
+              </div>
+              <div class="game-time-container">
+                <label for="game-time">Game Time:</label>
+                <input type="time" id="game-time" class="time-input">
+              </div>
+              <button id="update-game-info" class="btn secondary">Update</button>
+            </div>
+            <div class="game-info-display">
+              <p>Current Game: <span id="current-game-info">Not set</span></p>
+            </div>
+          </div>
+        </section>
+        
+        <section class="section period-section" style="display: none;">
+          <div class="period-header">
+            <h2>Period</h2>
+            <button id="toggle-period" class="btn secondary full-width">Show Period Controls</button>
+          </div>
+          <div id="period-control-panel" style="display: none;">
+            <div class="period-control">
+              <button id="period-minus" class="btn period-btn">-</button>
+              <span id="period-display" class="period-display">1</span>
+              <button id="period-plus" class="btn period-btn">+</button>
+            </div>
+            <div class="period-presets">
+              <button id="set-period-1" class="btn period-preset">1st</button>
+              <button id="set-period-2" class="btn period-preset">2nd</button>
+              <button id="set-period-3" class="btn period-preset">3rd</button>
+              <button id="set-period-so" class="btn period-preset">Shootout</button>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- New Sound Settings Section at the bottom -->
+      <section class="section sounds-section">
+        <h2>Sound Settings</h2>
+        <div class="goal-horn-config">
+          <h3>Goal Horn Settings</h3>
+          <div class="sounds-container">
+            <div class="goal-horn-main-settings">
+              <div class="goal-horn-file-container">
+                <label for="goal-horn-file">Upload Custom Goal Horn:</label>
+                <input type="file" id="goal-horn-file" accept="audio/*" class="file-input">
+              </div>
+              <div class="goal-horn-volume-container">
+                <label for="goal-horn-volume">Volume:</label>
+                <input type="range" id="goal-horn-volume" min="0" max="100" value="80" class="volume-slider">
+                <span id="volume-value">80%</span>
+              </div>
+              <div class="goal-horn-master-toggle">
+                <input type="checkbox" id="goal-horn-master-enabled" checked>
+                <label for="goal-horn-master-enabled">Enable Goal Horn Sound</label>
+              </div>
+            </div>
+            
+            <div class="team-goal-horn-settings">
+              <div class="team-horn-control">
+                <h4>Home Team</h4>
+                <div class="goal-horn-toggle">
+                  <input type="checkbox" id="team1-goal-horn-enabled" checked>
+                  <label for="team1-goal-horn-enabled">Play Goal Horn on Score</label>
+                </div>
+                <button id="team1-test-horn" class="btn">Test Goal Horn</button>
+              </div>
+              
+              <div class="team-horn-control">
+                <h4>Away Team</h4>
+                <div class="goal-horn-toggle">
+                  <input type="checkbox" id="team2-goal-horn-enabled" checked>
+                  <label for="team2-goal-horn-enabled">Play Goal Horn on Score</label>
+                </div>
+                <button id="team2-test-horn" class="btn">Test Goal Horn</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>

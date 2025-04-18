@@ -13,7 +13,13 @@
       <div class="logo-container">
         <img id="team1-logo" src="../assets/Anteaters_Official_Logo.png" alt="ASOKE Anteaters Logo">
       </div>
-      <div class="team-name" id="team1-name">ANT</div>
+      <div class="team-info">
+        <div class="team-name" id="team1-name">ANT</div>
+        <div class="penalty-timer" id="team1-penalty">
+          <div class="penalty-indicator">PEN</div>
+          <div class="penalty-time">00:00</div>
+        </div>
+      </div>
     </div>
     
     <div class="center-info">
@@ -24,11 +30,22 @@
     </div>
     
     <div class="team team2">
-      <div class="team-name" id="team2-name">RAI</div>
+      <div class="team-info">
+        <div class="team-name" id="team2-name">RAI</div>
+        <div class="penalty-timer" id="team2-penalty">
+          <div class="penalty-indicator">PEN</div>
+          <div class="penalty-time">00:00</div>
+        </div>
+      </div>
       <div class="logo-container">
         <img id="team2-logo" src="../assets/Raiders_Official_Logo.png" alt="Rattanakorn Raiders Logo">
       </div>
     </div>
+  </div>
+
+  <!-- Audio container for sounds (hidden) -->
+  <div class="audio-container" style="display: none;">
+    <audio id="goal-horn-audio" preload="auto"></audio>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

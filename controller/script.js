@@ -62,11 +62,75 @@ const setPeriodSOBtn = document.getElementById('set-period-so');
 const finishGameBtn = document.getElementById('finish-game');
 const gameResultDisplay = document.getElementById('game-result-display');
 const resetGameBtn = document.getElementById('reset-game');
+const toggleTeam1PenaltyBtn = document.getElementById('toggle-team1-penalty');
+const toggleTeam2PenaltyBtn = document.getElementById('toggle-team2-penalty');
 
 // DOM Elements - Game History
 const loadHistoryBtn = document.getElementById('load-history');
 const historyTableBody = document.getElementById('history-table-body');
 const noHistoryMessage = document.getElementById('no-history-message');
+
+// DOM Elements - Game Configuration
+const defaultPeriodMinutesInput = document.getElementById('default-period-minutes');
+const defaultTotalPeriodsInput = document.getElementById('default-total-periods');
+const defaultShootoutMinutesInput = document.getElementById('default-shootout-minutes');
+const saveGameConfigBtn = document.getElementById('save-game-config');
+
+// DOM Elements - Team Management
+const toggleTeamMgmtBtn = document.getElementById('toggle-team-mgmt');
+const teamManagementPanel = document.getElementById('team-management-panel');
+const teamsList = document.getElementById('teams-list');
+const teamForm = document.getElementById('team-form');
+const teamFormTitle = document.getElementById('team-form-title');
+const teamIdInput = document.getElementById('team-id');
+const teamNameInput = document.getElementById('team-name');
+const teamDisplayNameInput = document.getElementById('team-display-name');
+const teamAbbreviationInput = document.getElementById('team-abbreviation');
+const teamLogoUrlInput = document.getElementById('team-logo-url');
+const teamLogoFileInput = document.getElementById('team-logo-file');
+const saveTeamBtn = document.getElementById('save-team');
+const cancelTeamBtn = document.getElementById('cancel-team');
+
+// DOM Elements - Toggle Game Info
+const toggleGameInfoBtn = document.getElementById('toggle-game-info');
+const gameInfoPanel = document.getElementById('game-info-panel');
+
+// DOM elements for penalty controls
+const team1PenaltyTime = document.getElementById('team1-penalty-time');
+const team1PenaltyEnabled = document.getElementById('team1-penalty-enabled');
+const team1PenaltyMins = document.getElementById('team1-penalty-mins');
+const team1PenaltySecs = document.getElementById('team1-penalty-secs');
+const team1PenaltySet = document.getElementById('team1-penalty-set');
+const team1PenaltyClear = document.getElementById('team1-penalty-clear');
+
+const team2PenaltyTime = document.getElementById('team2-penalty-time');
+const team2PenaltyEnabled = document.getElementById('team2-penalty-enabled');
+const team2PenaltyMins = document.getElementById('team2-penalty-mins');
+const team2PenaltySecs = document.getElementById('team2-penalty-secs');
+const team2PenaltySet = document.getElementById('team2-penalty-set');
+const team2PenaltyClear = document.getElementById('team2-penalty-clear');
+
+// DOM Elements - Goal Horn Controls
+const team1GoalHornEnabled = document.getElementById('team1-goal-horn-enabled');
+const team1TestHorn = document.getElementById('team1-test-horn');
+const team2GoalHornEnabled = document.getElementById('team2-goal-horn-enabled');
+const team2TestHorn = document.getElementById('team2-test-horn');
+const goalHornMasterEnabled = document.getElementById('goal-horn-master-enabled');
+const goalHornFile = document.getElementById('goal-horn-file');
+const goalHornVolume = document.getElementById('goal-horn-volume');
+const volumeValue = document.getElementById('volume-value');
+
+// Variables to track penalty times
+let team1PenaltyTimeRemaining = 0;
+let team2PenaltyTimeRemaining = 0;
+let team1PenaltyActive = false;
+let team2PenaltyActive = false;
+let team1PenaltyInterval;
+let team2PenaltyInterval;
+
+// Add variables to track penalty display state
+let team1PenaltyVisible = true;
+let team2PenaltyVisible = true;
 
 // Game state
 let gameState = {
@@ -92,8 +156,16 @@ let gameState = {
     time: '',
     finished: false,
     result: ''
+  },
+  config: {
+    periodMinutes: 15,
+    totalPeriods: 3,
+    shootoutMinutes: 5
   }
 };
+
+// Add this variable to store teams data
+let teamsData = [];
 
 // Format time from seconds to MM:SS
 function formatTime(seconds) {
@@ -143,16 +215,6 @@ socket.on('connect', () => {
   // Set timer display
   timerDisplay.textContent = formatTime(gameState.timer.time);
   
-  if (gameState.timer.isRunning) {
-    startTimerBtn.textContent = 'Stop';
-    startTimerBtn.classList.remove('start');
-    startTimerBtn.classList.add('stop');
-  } else {
-    startTimerBtn.textContent = 'Start';
-    startTimerBtn.classList.remove('stop');
-    startTimerBtn.classList.add('start');
-  }
-  
   setTimerDisplay();
   updateScoreDisplay();
   updatePeriodDisplay();
@@ -160,6 +222,9 @@ socket.on('connect', () => {
   
   // Automatically load game history on connection
   loadGameHistory();
+  
+  // Add this line to load teams on connect
+  loadTeams();
 });
 
 socket.on('disconnect', () => {
@@ -169,7 +234,7 @@ socket.on('disconnect', () => {
 });
 
 socket.on('gameState', (state) => {
-  // Update local state
+  console.log('Game state received:', state);
   gameState = state;
   
   // Update UI with current game state
@@ -187,6 +252,31 @@ socket.on('gameState', (state) => {
   // Update time inputs
   timeMinutesInput.value = Math.floor(state.timer.time / 60);
   timeSecondsInput.value = state.timer.time % 60;
+  
+  // Update game configuration inputs if available
+  if (state.config) {
+    defaultPeriodMinutesInput.value = state.config.periodMinutes;
+    defaultTotalPeriodsInput.value = state.config.totalPeriods;
+    defaultShootoutMinutesInput.value = state.config.shootoutMinutes;
+  }
+  
+  // Initialize goal horn settings if available
+  if (state.goalHorn) {
+    goalHornSettings = {
+      ...goalHornSettings,
+      ...state.goalHorn
+    };
+    
+    // Update UI controls
+    goalHornMasterEnabled.checked = state.goalHorn.enabled !== undefined ? state.goalHorn.enabled : goalHornSettings.enabled;
+    team1GoalHornEnabled.checked = state.goalHorn.team1Enabled !== undefined ? state.goalHorn.team1Enabled : goalHornSettings.team1Enabled;
+    team2GoalHornEnabled.checked = state.goalHorn.team2Enabled !== undefined ? state.goalHorn.team2Enabled : goalHornSettings.team2Enabled;
+    
+    if (state.goalHorn.volume !== undefined) {
+      goalHornVolume.value = state.goalHorn.volume;
+      volumeValue.textContent = `${state.goalHorn.volume}%`;
+    }
+  }
   
   // Update game info if available
   if (state.gameInfo) {
@@ -211,6 +301,31 @@ socket.on('gameState', (state) => {
       gameResultDisplay.style.display = 'none';
     }
   }
+  
+  // Sync local penalty state with server state
+  if (state.teams && state.teams.team1 && state.teams.team1.penalty) {
+    team1PenaltyActive = state.teams.team1.penalty.active;
+    team1PenaltyTimeRemaining = state.teams.team1.penalty.time;
+    team1PenaltyEnabled.checked = team1PenaltyActive;
+    updatePenaltyDisplay(1);
+    
+    // Update penalty visibility state
+    team1PenaltyVisible = state.teams.team1.penalty.visible !== false;
+    toggleTeam1PenaltyBtn.textContent = team1PenaltyVisible ? 'Hide Home Penalty' : 'Show Home Penalty';
+    toggleTeam1PenaltyBtn.classList.toggle('active', !team1PenaltyVisible);
+  }
+  
+  if (state.teams && state.teams.team2 && state.teams.team2.penalty) {
+    team2PenaltyActive = state.teams.team2.penalty.active;
+    team2PenaltyTimeRemaining = state.teams.team2.penalty.time;
+    team2PenaltyEnabled.checked = team2PenaltyActive;
+    updatePenaltyDisplay(2);
+    
+    // Update penalty visibility state
+    team2PenaltyVisible = state.teams.team2.penalty.visible !== false;
+    toggleTeam2PenaltyBtn.textContent = team2PenaltyVisible ? 'Hide Away Penalty' : 'Show Away Penalty';
+    toggleTeam2PenaltyBtn.classList.toggle('active', !team2PenaltyVisible);
+  }
 });
 
 socket.on('timeUpdate', (time) => {
@@ -220,16 +335,10 @@ socket.on('timeUpdate', (time) => {
 
 socket.on('timerStarted', () => {
   gameState.timer.isRunning = true;
-  startTimerBtn.textContent = 'Stop';
-  startTimerBtn.classList.remove('start');
-  startTimerBtn.classList.add('stop');
 });
 
 socket.on('timerStopped', () => {
   gameState.timer.isRunning = false;
-  startTimerBtn.textContent = 'Start';
-  startTimerBtn.classList.remove('stop');
-  startTimerBtn.classList.add('start');
 });
 
 socket.on('scoreUpdate', (teams) => {
@@ -372,31 +481,39 @@ nextPeriodBtn.addEventListener('click', () => {
     socket.emit('stopTimer');
   }
   
-  // Reset the timer to 15 minutes
-  const seconds = 900;
-  socket.emit('setTime', seconds);
+  // Get period time from config (default to 15 minutes if not set)
+  const periodMinutes = gameState.config?.periodMinutes || 15;
+  const periodSeconds = periodMinutes * 60;
+  
+  // Set the timer based on configuration
+  socket.emit('setTime', periodSeconds);
   
   // Update local time inputs
-  timeMinutesInput.value = 15;
+  timeMinutesInput.value = periodMinutes;
   timeSecondsInput.value = 0;
   
   // Increment the period
   const newPeriod = gameState.period + 1;
   
-  // If going beyond period 3, go straight to shootout (period 5)
-  if (newPeriod === 4) {
+  // Get total periods from config (default to 3 if not set)
+  const totalPeriods = gameState.config?.totalPeriods || 3;
+  const shootoutMinutes = gameState.config?.shootoutMinutes || 5;
+  
+  // If going beyond configured total periods, go to shootout (period 5)
+  if (newPeriod > totalPeriods) {
     socket.emit('updatePeriod', 5); // Set to shootout
     
-    // Reset timer for shootout to 5 minutes
-    socket.emit('setTime', 300); // 5 minutes for shootout
-    timeMinutesInput.value = 5;
+    // Reset timer for shootout based on config
+    const shootoutSeconds = shootoutMinutes * 60;
+    socket.emit('setTime', shootoutSeconds);
+    timeMinutesInput.value = shootoutMinutes;
     timeSecondsInput.value = 0;
   } else {
     socket.emit('updatePeriod', newPeriod);
   }
   
   // Update button text to show current period
-  updateNextPeriodButtonText(newPeriod === 4 ? 5 : newPeriod);
+  updateNextPeriodButtonText(newPeriod > totalPeriods ? 5 : newPeriod);
 });
 
 // Helper function to update Next Period button text
@@ -423,22 +540,53 @@ function updateNextPeriodButtonText(period) {
 // Period preset buttons
 setPeriod1Btn.addEventListener('click', () => {
   socket.emit('updatePeriod', 1);
+  
+  // Get period time from config (default to 15 minutes if not set)
+  const periodMinutes = gameState.config?.periodMinutes || 15;
+  const periodSeconds = periodMinutes * 60;
+  
+  // Set timer for regular period based on config
+  socket.emit('setTime', periodSeconds);
+  timeMinutesInput.value = periodMinutes;
+  timeSecondsInput.value = 0;
 });
 
 setPeriod2Btn.addEventListener('click', () => {
   socket.emit('updatePeriod', 2);
+  
+  // Get period time from config (default to 15 minutes if not set)
+  const periodMinutes = gameState.config?.periodMinutes || 15;
+  const periodSeconds = periodMinutes * 60;
+  
+  // Set timer for regular period based on config
+  socket.emit('setTime', periodSeconds);
+  timeMinutesInput.value = periodMinutes;
+  timeSecondsInput.value = 0;
 });
 
 setPeriod3Btn.addEventListener('click', () => {
   socket.emit('updatePeriod', 3);
+  
+  // Get period time from config (default to 15 minutes if not set)
+  const periodMinutes = gameState.config?.periodMinutes || 15;
+  const periodSeconds = periodMinutes * 60;
+  
+  // Set timer for regular period based on config
+  socket.emit('setTime', periodSeconds);
+  timeMinutesInput.value = periodMinutes;
+  timeSecondsInput.value = 0;
 });
 
 setPeriodSOBtn.addEventListener('click', () => {
   socket.emit('updatePeriod', 5); // SO is period 5
   
-  // Set timer to 5 minutes for shootout
-  socket.emit('setTime', 300);
-  timeMinutesInput.value = 5;
+  // Get shootout minutes from config (default to 5 if not set)
+  const shootoutMinutes = gameState.config?.shootoutMinutes || 5;
+  const shootoutSeconds = shootoutMinutes * 60;
+  
+  // Set timer for shootout based on config
+  socket.emit('setTime', shootoutSeconds);
+  timeMinutesInput.value = shootoutMinutes;
   timeSecondsInput.value = 0;
 });
 
@@ -558,34 +706,39 @@ startTimerBtn.addEventListener('click', () => {
   if (!gameState.timer.isRunning) {
     socket.emit('startTimer');
     gameState.timer.isRunning = true;
-    startTimerBtn.textContent = 'Stop';
-    startTimerBtn.classList.remove('start');
-    startTimerBtn.classList.add('stop');
   } else {
     socket.emit('stopTimer');
     gameState.timer.isRunning = false;
-    startTimerBtn.textContent = 'Start';
-    startTimerBtn.classList.remove('stop');
-    startTimerBtn.classList.add('start');
   }
 });
 
 stopTimerBtn.addEventListener('click', () => {
   socket.emit('stopTimer');
   gameState.timer.isRunning = false;
-  startTimerBtn.textContent = 'Start';
-  startTimerBtn.classList.remove('stop');
-  startTimerBtn.classList.add('start');
 });
 
 resetTimerBtn.addEventListener('click', () => {
-  // Reset to 15 minutes
-  const seconds = 900;
-  socket.emit('setTime', seconds);
+  // Determine which period time to use based on current period
+  let periodMinutes;
+  
+  if (gameState.period === 5) { // Shootout period
+    // Get shootout minutes from config (default to 5 if not set)
+    periodMinutes = gameState.config?.shootoutMinutes || 5;
+  } else {
+    // Get regular period minutes from config (default to 15 if not set)
+    periodMinutes = gameState.config?.periodMinutes || 15;
+  }
+  
+  const periodSeconds = periodMinutes * 60;
+  
+  // Reset timer based on configuration
+  socket.emit('setTime', periodSeconds);
   
   // Update local time inputs
-  timeMinutesInput.value = 15;
+  timeMinutesInput.value = periodMinutes;
   timeSecondsInput.value = 0;
+  
+  console.log(`Timer reset to ${periodMinutes} minutes based on current period (${gameState.period})`);
 });
 
 setTimeBtn.addEventListener('click', () => {
@@ -618,7 +771,21 @@ subSecondsBtn.addEventListener('click', () => {
 // Team Controls
 updateTeam1NameBtn.addEventListener('click', () => {
   const newName = team1NameInput.value;
-  socket.emit('updateTeam', { team: 'team1', data: { name: newName } });
+  // Find team data to get the abbreviation
+  const teamData = teamsData.find(t => 
+    t.name.toUpperCase() === newName.toUpperCase() || 
+    newName.includes(t.name) || 
+    t.name.includes(newName)
+  );
+  
+  const abbreviation = teamData ? teamData.abbreviation : '';
+  socket.emit('updateTeam', { 
+    team: 'team1', 
+    data: { 
+      name: newName,
+      abbreviation: abbreviation
+    } 
+  });
 });
 
 updateTeam1LogoBtn.addEventListener('click', () => {
@@ -644,6 +811,15 @@ team1LogoFile.addEventListener('change', (e) => {
 team1ScorePlusBtn.addEventListener('click', () => {
   const newScore = gameState.teams.team1.score + 1;
   socket.emit('updateScore', { team: 'team1', score: newScore });
+  
+  // Play goal horn if enabled
+  if (goalHornSettings.enabled && goalHornSettings.team1Enabled) {
+    socket.emit('playGoalHorn', { 
+      team: 'team1', 
+      volume: goalHornSettings.volume,
+      customSound: goalHornSettings.customSound
+    });
+  }
 });
 
 team1ScoreMinusBtn.addEventListener('click', () => {
@@ -653,7 +829,21 @@ team1ScoreMinusBtn.addEventListener('click', () => {
 
 updateTeam2NameBtn.addEventListener('click', () => {
   const newName = team2NameInput.value;
-  socket.emit('updateTeam', { team: 'team2', data: { name: newName } });
+  // Find team data to get the abbreviation
+  const teamData = teamsData.find(t => 
+    t.name.toUpperCase() === newName.toUpperCase() || 
+    newName.includes(t.name) || 
+    t.name.includes(newName)
+  );
+  
+  const abbreviation = teamData ? teamData.abbreviation : '';
+  socket.emit('updateTeam', { 
+    team: 'team2', 
+    data: { 
+      name: newName,
+      abbreviation: abbreviation
+    } 
+  });
 });
 
 updateTeam2LogoBtn.addEventListener('click', () => {
@@ -679,6 +869,15 @@ team2LogoFile.addEventListener('change', (e) => {
 team2ScorePlusBtn.addEventListener('click', () => {
   const newScore = gameState.teams.team2.score + 1;
   socket.emit('updateScore', { team: 'team2', score: newScore });
+  
+  // Play goal horn if enabled
+  if (goalHornSettings.enabled && goalHornSettings.team2Enabled) {
+    socket.emit('playGoalHorn', { 
+      team: 'team2', 
+      volume: goalHornSettings.volume,
+      customSound: goalHornSettings.customSound
+    });
+  }
 });
 
 team2ScoreMinusBtn.addEventListener('click', () => {
@@ -767,10 +966,10 @@ document.addEventListener('keydown', (e) => {
   switch (e.key) {
     case ' ': // Spacebar
       e.preventDefault(); // Prevent page scroll
-      // Toggle timer - if running, stop it; if stopped, start it
+      // Toggle timer - if running, use Pause button; if stopped, use Start button
       if (gameState.timer.isRunning) {
         stopTimerBtn.click();
-        showKeyboardFeedback('Timer Stopped');
+        showKeyboardFeedback('Timer Paused');
       } else {
         startTimerBtn.click();
         showKeyboardFeedback('Timer Started');
@@ -779,6 +978,7 @@ document.addEventListener('keydown', (e) => {
       
     case 'ArrowUp': // Up arrow - increase home team score
       e.preventDefault();
+      // We need to manually click the button to ensure goal horn plays
       team1ScorePlusBtn.click();
       showKeyboardFeedback('Home +1');
       break;
@@ -797,6 +997,7 @@ document.addEventListener('keydown', (e) => {
       
     case 'ArrowRight': // Right arrow - increase away team score
       e.preventDefault();
+      // We need to manually click the button to ensure goal horn plays
       team2ScorePlusBtn.click();
       showKeyboardFeedback('Away +1');
       break;
@@ -822,4 +1023,543 @@ function showKeyboardFeedback(message) {
       }, 300);
     }, 800);
   }, 10);
-} 
+}
+
+// Add these functions for team management
+
+// Function to load teams from the server
+function loadTeams() {
+  socket.emit('fetchTeams');
+}
+
+// Function to render teams list
+function renderTeamsList() {
+  teamsList.innerHTML = '';
+  
+  if (teamsData.length === 0) {
+    teamsList.innerHTML = '<div class="no-teams-message">No teams available. Add a team to get started.</div>';
+    return;
+  }
+  
+  teamsData.forEach(team => {
+    const teamItem = document.createElement('div');
+    teamItem.className = 'team-item';
+    
+    // Use a default SVG logo if logo_url is missing
+    const logoSrc = team.logo_url || '../assets/default-logo.svg';
+    
+    teamItem.innerHTML = `
+      <img src="${logoSrc}" alt="${team.name}" class="team-item-logo" onerror="this.src='../assets/default-logo.svg'">
+      <div class="team-item-info">
+        <div class="team-item-name">${team.name}</div>
+        <div class="team-item-display">Display: ${team.display_name}</div>
+        ${team.abbreviation ? `<div class="team-item-abbr">Abbreviation: ${team.abbreviation}</div>` : ''}
+      </div>
+      <div class="team-item-actions">
+        <button class="btn team-item-edit" data-id="${team.id}">Edit</button>
+        <button class="btn team-item-delete" data-id="${team.id}">Delete</button>
+      </div>
+    `;
+    teamsList.appendChild(teamItem);
+  });
+  
+  // Add event listeners to edit and delete buttons
+  document.querySelectorAll('.team-item-edit').forEach(button => {
+    button.addEventListener('click', () => {
+      const teamId = button.getAttribute('data-id');
+      editTeam(teamId);
+    });
+  });
+  
+  document.querySelectorAll('.team-item-delete').forEach(button => {
+    button.addEventListener('click', () => {
+      const teamId = button.getAttribute('data-id');
+      deleteTeam(teamId);
+    });
+  });
+  
+  // Also update the team presets with the latest data
+  updateTeamPresets();
+}
+
+// Function to update team presets
+function updateTeamPresets() {
+  // Clear existing presets
+  const team1Presets = document.querySelector('.team1-control .team-presets');
+  const team2Presets = document.querySelector('.team2-control .team-presets');
+  
+  team1Presets.innerHTML = '';
+  team2Presets.innerHTML = '';
+  
+  // Add new presets based on teams data
+  teamsData.forEach(team => {
+    const team1Button = document.createElement('button');
+    team1Button.className = 'btn preset-btn';
+    team1Button.setAttribute('data-team', 'team1');
+    team1Button.setAttribute('data-name', team.name);
+    team1Button.setAttribute('data-logo', team.logo_url || ''); // Empty string if no logo
+    team1Button.setAttribute('data-abbreviation', team.abbreviation || ''); // Add abbreviation
+    team1Button.textContent = team.display_name;
+    
+    const team2Button = document.createElement('button');
+    team2Button.className = 'btn preset-btn';
+    team2Button.setAttribute('data-team', 'team2');
+    team2Button.setAttribute('data-name', team.name);
+    team2Button.setAttribute('data-logo', team.logo_url || ''); // Empty string if no logo
+    team2Button.setAttribute('data-abbreviation', team.abbreviation || ''); // Add abbreviation
+    team2Button.textContent = team.display_name;
+    
+    team1Presets.appendChild(team1Button);
+    team2Presets.appendChild(team2Button);
+  });
+  
+  // Add event listeners to new preset buttons
+  document.querySelectorAll('.preset-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const team = button.dataset.team;
+      const name = button.dataset.name;
+      const logo = button.dataset.logo;
+      const abbreviation = button.dataset.abbreviation;
+      
+      if (team === 'team1') {
+        team1NameInput.value = name;
+        team1LogoInput.value = logo;
+        socket.emit('updateTeam', { 
+          team: team, 
+          data: { 
+            name: name, 
+            logo: logo,
+            abbreviation: abbreviation 
+          } 
+        });
+      } else if (team === 'team2') {
+        team2NameInput.value = name;
+        team2LogoInput.value = logo;
+        socket.emit('updateTeam', { 
+          team: team, 
+          data: { 
+            name: name, 
+            logo: logo,
+            abbreviation: abbreviation 
+          } 
+        });
+      }
+    });
+  });
+}
+
+// Function to reset the form for adding a new team
+function resetTeamForm() {
+  teamFormTitle.textContent = 'Add New Team';
+  teamIdInput.value = '';
+  teamNameInput.value = '';
+  teamDisplayNameInput.value = '';
+  teamAbbreviationInput.value = '';
+  teamLogoUrlInput.value = '';
+  teamLogoFileInput.value = '';
+  saveTeamBtn.textContent = 'Save Team';
+}
+
+// Function to edit a team
+function editTeam(teamId) {
+  const team = teamsData.find(t => t.id === parseInt(teamId));
+  if (!team) return;
+  
+  teamFormTitle.textContent = 'Edit Team';
+  teamIdInput.value = team.id;
+  teamNameInput.value = team.name;
+  teamDisplayNameInput.value = team.display_name;
+  teamAbbreviationInput.value = team.abbreviation || '';
+  teamLogoUrlInput.value = team.logo_url || '';
+  saveTeamBtn.textContent = 'Update Team';
+  
+  // Scroll to the form
+  teamForm.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Function to delete a team
+function deleteTeam(teamId) {
+  if (confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
+    socket.emit('deleteTeam', parseInt(teamId));
+  }
+}
+
+// Add these Socket.IO event listeners for team management
+socket.on('teamsData', (result) => {
+  if (result.success) {
+    teamsData = result.data;
+    renderTeamsList();
+  } else {
+    alert('Failed to load teams: ' + (result.error ? result.error.message : 'Unknown error'));
+  }
+});
+
+socket.on('teamAdded', (team) => {
+  teamsData.push(team);
+  renderTeamsList();
+  resetTeamForm();
+});
+
+socket.on('teamUpdated', (updatedTeam) => {
+  const index = teamsData.findIndex(t => t.id === updatedTeam.id);
+  if (index !== -1) {
+    teamsData[index] = updatedTeam;
+    renderTeamsList();
+    resetTeamForm();
+  }
+});
+
+socket.on('teamDeleted', (id) => {
+  teamsData = teamsData.filter(t => t.id !== parseInt(id));
+  renderTeamsList();
+});
+
+socket.on('teamAddResult', (result) => {
+  console.log('Received teamAddResult:', result);
+  saveTeamBtn.textContent = 'Save Team';
+  saveTeamBtn.disabled = false;
+  
+  if (!result.success) {
+    alert('Failed to add team: ' + (result.error ? JSON.stringify(result.error) : 'Unknown error'));
+  } else {
+    alert('Team added successfully!');
+  }
+});
+
+socket.on('teamUpdateResult', (result) => {
+  if (!result.success) {
+    alert('Failed to update team: ' + (result.error ? result.error.message : 'Unknown error'));
+  }
+});
+
+socket.on('teamDeleteResult', (result) => {
+  if (!result.success) {
+    alert('Failed to delete team: ' + (result.error ? result.error.message : 'Unknown error'));
+  }
+});
+
+// Add these event listeners
+// Team logo file input handler
+teamLogoFileInput.addEventListener('change', function() {
+  if (this.files && this.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      teamLogoUrlInput.value = e.target.result;
+    };
+    reader.readAsDataURL(this.files[0]);
+  }
+});
+
+// Toggle team management panel
+toggleTeamMgmtBtn.addEventListener('click', () => {
+  const isVisible = teamManagementPanel.style.display !== 'none';
+  teamManagementPanel.style.display = isVisible ? 'none' : 'flex';
+  toggleTeamMgmtBtn.textContent = isVisible ? 'Show Team Management' : 'Hide Team Management';
+  
+  if (!isVisible) {
+    loadTeams();
+  }
+});
+
+teamForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const teamData = {
+    name: teamNameInput.value,
+    display_name: teamDisplayNameInput.value,
+    abbreviation: teamAbbreviationInput.value || null, // Set to null if empty
+    logo_url: teamLogoUrlInput.value || null  // Set to null if empty
+  };
+  
+  console.log('Submitting team form with data:', teamData);
+  
+  const teamId = teamIdInput.value;
+  
+  if (teamId) {
+    // Update existing team
+    console.log('Updating existing team with ID:', teamId);
+    socket.emit('updateTeam', { id: parseInt(teamId), teamData });
+  } else {
+    // Add new team
+    console.log('Adding new team');
+    socket.emit('addTeam', teamData);
+  }
+  
+  // Show processing indicator
+  saveTeamBtn.textContent = 'Processing...';
+  saveTeamBtn.disabled = true;
+});
+
+cancelTeamBtn.addEventListener('click', () => {
+  resetTeamForm();
+});
+
+// Add socket event handlers for game configuration
+socket.on('gameConfigUpdate', (config) => {
+  // Update local game configuration
+  gameState.config = config;
+  
+  // Update UI form inputs
+  defaultPeriodMinutesInput.value = config.periodMinutes;
+  defaultTotalPeriodsInput.value = config.totalPeriods;
+  defaultShootoutMinutesInput.value = config.shootoutMinutes;
+  
+  // If resetTimerBtn is clicked, it will now use these new values
+  console.log("Game configuration updated:", config);
+});
+
+socket.on('gameConfigSaved', (response) => {
+  if (response.success) {
+    // Show a temporary notification
+    const savedNote = document.createElement('div');
+    savedNote.className = 'save-notification success';
+    savedNote.textContent = 'Game configuration saved!';
+    saveGameConfigBtn.parentNode.appendChild(savedNote);
+    
+    // Remove notification after 3 seconds
+    setTimeout(() => {
+      savedNote.remove();
+    }, 3000);
+  }
+});
+
+// Game Configuration Save Button
+saveGameConfigBtn.addEventListener('click', () => {
+  // Get values from inputs
+  const periodMinutes = parseInt(defaultPeriodMinutesInput.value) || 15;
+  const totalPeriods = parseInt(defaultTotalPeriodsInput.value) || 3;
+  const shootoutMinutes = parseInt(defaultShootoutMinutesInput.value) || 5;
+  
+  // Create configuration object
+  const config = {
+    periodMinutes: periodMinutes,
+    totalPeriods: totalPeriods,
+    shootoutMinutes: shootoutMinutes
+  };
+  
+  // Update local gameState with the new config
+  gameState.config = config;
+  
+  // If it's not a shootout period, update the timer input immediately to reflect the new default
+  if (gameState.period !== 5) {
+    // Set the timer inputs based on the current period time
+    timeMinutesInput.value = periodMinutes;
+    timeSecondsInput.value = 0;
+    
+    // Also update the actual timer if requested
+    if (confirm("Apply new period minutes to current timer?")) {
+      const newTimeInSeconds = periodMinutes * 60;
+      socket.emit('setTime', newTimeInSeconds);
+      timerDisplay.textContent = formatTime(newTimeInSeconds);
+    }
+  } else {
+    // If currently in shootout period, ask to update with shootout minutes
+    if (confirm("Apply new shootout minutes to current timer?")) {
+      const newTimeInSeconds = shootoutMinutes * 60;
+      socket.emit('setTime', newTimeInSeconds);
+      timerDisplay.textContent = formatTime(newTimeInSeconds);
+      timeMinutesInput.value = shootoutMinutes;
+      timeSecondsInput.value = 0;
+    }
+  }
+  
+  // Send the updated configuration to the server
+  socket.emit('updateGameConfig', config);
+  
+  // Provide immediate feedback
+  const savedNote = document.createElement('div');
+  savedNote.className = 'save-notification success';
+  savedNote.textContent = 'Game configuration saved and applied!';
+  saveGameConfigBtn.parentNode.appendChild(savedNote);
+  
+  // Remove notification after 3 seconds
+  setTimeout(() => {
+    savedNote.remove();
+  }, 3000);
+});
+
+// Toggle game info panel
+toggleGameInfoBtn.addEventListener('click', () => {
+  if (gameInfoPanel.style.display === 'none') {
+    gameInfoPanel.style.display = 'block';
+    toggleGameInfoBtn.textContent = 'Hide Game Date/Time';
+  } else {
+    gameInfoPanel.style.display = 'none';
+    toggleGameInfoBtn.textContent = 'Show Game Date/Time';
+  }
+});
+
+// Autoload teams when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+  // Load teams data immediately
+  loadTeams();
+  
+  // Show team management panel by default
+  setTimeout(() => {
+    teamManagementPanel.style.display = 'flex';
+    toggleTeamMgmtBtn.textContent = 'Hide Team Management';
+  }, 500); // Slight delay to ensure socket connection is established
+});
+
+// Add socket event listener for penalty updates
+socket.on('penaltyUpdate', (data) => {
+  console.log('Penalty update received:', data);
+  const team = data.team;
+  const active = data.active;
+  const time = data.time || 0;
+  
+  // Update local penalty state
+  if (team === 'team1') {
+    team1PenaltyActive = active;
+    team1PenaltyTimeRemaining = time;
+    team1PenaltyEnabled.checked = active;
+    updatePenaltyDisplay(1);
+  } else if (team === 'team2') {
+    team2PenaltyActive = active;
+    team2PenaltyTimeRemaining = time;
+    team2PenaltyEnabled.checked = active;
+    updatePenaltyDisplay(2);
+  }
+});
+
+// Event listeners for penalty controls
+team1PenaltySet.addEventListener('click', () => setPenalty(1));
+team1PenaltyClear.addEventListener('click', () => clearPenalty(1));
+team2PenaltySet.addEventListener('click', () => setPenalty(2));
+team2PenaltyClear.addEventListener('click', () => clearPenalty(2));
+team1PenaltyEnabled.addEventListener('change', () => togglePenalty(1));
+team2PenaltyEnabled.addEventListener('change', () => togglePenalty(2));
+
+// Penalty timer toggle buttons - initialize and set up event listeners
+const team1PenaltyToggleBtn = document.getElementById('team1-penalty-toggle-btn');
+const team2PenaltyToggleBtn = document.getElementById('team2-penalty-toggle-btn');
+const team1PenaltyControl = document.querySelector('.team1-control .penalty-control');
+const team2PenaltyControl = document.querySelector('.team2-control .penalty-control');
+
+// Event listeners for penalty toggle buttons
+team1PenaltyToggleBtn.addEventListener('click', () => {
+  const isVisible = team1PenaltyControl.style.display === 'block';
+  team1PenaltyControl.style.display = isVisible ? 'none' : 'block';
+  team1PenaltyToggleBtn.textContent = isVisible ? 'Show Penalty Timer' : 'Hide Penalty Timer';
+  team1PenaltyToggleBtn.classList.toggle('active', !isVisible);
+});
+
+team2PenaltyToggleBtn.addEventListener('click', () => {
+  const isVisible = team2PenaltyControl.style.display === 'block';
+  team2PenaltyControl.style.display = isVisible ? 'none' : 'block';
+  team2PenaltyToggleBtn.textContent = isVisible ? 'Show Penalty Timer' : 'Hide Penalty Timer';
+  team2PenaltyToggleBtn.classList.toggle('active', !isVisible);
+});
+
+// Goal horn settings
+let goalHornSettings = {
+  enabled: true,
+  volume: 80,
+  team1Enabled: true,
+  team2Enabled: true,
+  customSound: null
+};
+
+// Goal Horn Event Listeners
+team1GoalHornEnabled.addEventListener('change', () => {
+  goalHornSettings.team1Enabled = team1GoalHornEnabled.checked;
+  socket.emit('updateGoalHornSettings', { team1Enabled: team1GoalHornEnabled.checked });
+});
+
+team2GoalHornEnabled.addEventListener('change', () => {
+  goalHornSettings.team2Enabled = team2GoalHornEnabled.checked;
+  socket.emit('updateGoalHornSettings', { team2Enabled: team2GoalHornEnabled.checked });
+});
+
+goalHornMasterEnabled.addEventListener('change', () => {
+  goalHornSettings.enabled = goalHornMasterEnabled.checked;
+  socket.emit('updateGoalHornSettings', { enabled: goalHornMasterEnabled.checked });
+});
+
+goalHornVolume.addEventListener('input', () => {
+  goalHornSettings.volume = goalHornVolume.value;
+  volumeValue.textContent = `${goalHornVolume.value}%`;
+  socket.emit('updateGoalHornSettings', { volume: goalHornVolume.value });
+});
+
+// Test goal horn buttons
+team1TestHorn.addEventListener('click', () => {
+  if (goalHornSettings.enabled && goalHornSettings.team1Enabled) {
+    socket.emit('playGoalHorn', { 
+      team: 'team1', 
+      volume: goalHornSettings.volume,
+      customSound: goalHornSettings.customSound,
+      isTest: true
+    });
+  }
+});
+
+team2TestHorn.addEventListener('click', () => {
+  if (goalHornSettings.enabled && goalHornSettings.team2Enabled) {
+    socket.emit('playGoalHorn', { 
+      team: 'team2', 
+      volume: goalHornSettings.volume,
+      customSound: goalHornSettings.customSound,
+      isTest: true
+    });
+  }
+});
+
+// Custom goal horn file upload
+goalHornFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const soundDataUrl = event.target.result;
+      goalHornSettings.customSound = soundDataUrl;
+      socket.emit('updateGoalHornSettings', { customSound: soundDataUrl });
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Update goal horn settings from server
+socket.on('goalHornSettings', (settings) => {
+  // Update local settings
+  goalHornSettings = {
+    ...goalHornSettings,
+    ...settings
+  };
+  
+  // Update UI controls
+  goalHornMasterEnabled.checked = settings.enabled !== undefined ? settings.enabled : goalHornSettings.enabled;
+  team1GoalHornEnabled.checked = settings.team1Enabled !== undefined ? settings.team1Enabled : goalHornSettings.team1Enabled;
+  team2GoalHornEnabled.checked = settings.team2Enabled !== undefined ? settings.team2Enabled : goalHornSettings.team2Enabled;
+  
+  if (settings.volume !== undefined) {
+    goalHornVolume.value = settings.volume;
+    volumeValue.textContent = `${settings.volume}%`;
+  }
+});
+
+// Initialize penalty toggle buttons 
+document.addEventListener('DOMContentLoaded', () => {
+  const team1PenaltyToggleBtn = document.getElementById('team1-penalty-toggle-btn');
+  const team2PenaltyToggleBtn = document.getElementById('team2-penalty-toggle-btn');
+  const team1PenaltyControl = document.querySelector('.team1-control .penalty-control');
+  const team2PenaltyControl = document.querySelector('.team2-control .penalty-control');
+
+  if (team1PenaltyToggleBtn && team1PenaltyControl) {
+    team1PenaltyToggleBtn.addEventListener('click', () => {
+      const isVisible = team1PenaltyControl.style.display === 'block';
+      team1PenaltyControl.style.display = isVisible ? 'none' : 'block';
+      team1PenaltyToggleBtn.textContent = isVisible ? 'Show Penalty Timer' : 'Hide Penalty Timer';
+      team1PenaltyToggleBtn.classList.toggle('active', !isVisible);
+    });
+  }
+
+  if (team2PenaltyToggleBtn && team2PenaltyControl) {
+    team2PenaltyToggleBtn.addEventListener('click', () => {
+      const isVisible = team2PenaltyControl.style.display === 'block';
+      team2PenaltyControl.style.display = isVisible ? 'none' : 'block';
+      team2PenaltyToggleBtn.textContent = isVisible ? 'Show Penalty Timer' : 'Hide Penalty Timer';
+      team2PenaltyToggleBtn.classList.toggle('active', !isVisible);
+    });
+  }
+}); 

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Form Debug</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    form { margin-bottom: 20px; }
+    input, button { margin: 5px 0; padding: 5px; }
+    #debug-output { 
+      background: #f0f0f0; 
+      padding: 10px; 
+      border: 1px solid #ccc; 
+      min-height: 200px; 
+      margin-top: 20px;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <h1>Team Form Debug</h1>
+  
+  <form id="debug-form">
+    <div>
+      <label for="team-name">Full Team Name:</label><br>
+      <input type="text" id="team-name" value="Test Team" required>
+    </div>
+    <div>
+      <label for="team-display-name">Display Name:</label><br>
+      <input type="text" id="team-display-name" value="Test" required>
+    </div>
+    <div>
+      <label for="team-logo-url">Logo URL (optional):</label><br>
+      <input type="text" id="team-logo-url" value="../assets/default-logo.svg">
+    </div>
+    <button type="submit">Save Team</button>
+  </form>
+
+  <button id="fetch-teams">Fetch Teams</button>
+  <button id="initialize-teams-table">Initialize Teams Table</button>
+  
+  <div id="debug-output"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const debugOutput = document.getElementById('debug-output');
+    const form = document.getElementById('debug-form');
+    const fetchTeamsBtn = document.getElementById('fetch-teams');
+    const initTableBtn = document.getElementById('initialize-teams-table');
+    
+    // Log function
+    function log(message, data) {
+      console.log(message, data);
+      const timestamp = new Date().toLocaleTimeString();
+      let text = `[${timestamp}] ${message}`;
+      if (data) {
+        text += '\n' + JSON.stringify(data, null, 2);
+      }
+      debugOutput.textContent = text + '\n\n' + debugOutput.textContent;
+    }
+    
+    // Socket events
+    socket.on('connect', () => {
+      log('Connected to server');
+    });
+    
+    socket.on('teamsData', (result) => {
+      log('Received teams data', result);
+    });
+    
+    socket.on('teamAdded', (team) => {
+      log('Team added', team);
+    });
+    
+    socket.on('teamAddResult', (result) => {
+      log('Team add result', result);
+    });
+
+    socket.on('initTeamsTableResult', (result) => {
+      log('Initialize teams table result', result);
+    });
+    
+    // Form submit
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const teamData = {
+        name: document.getElementById('team-name').value,
+        display_name: document.getElementById('team-display-name').value,
+        logo_url: document.getElementById('team-logo-url').value || null
+      };
+      
+      log('Emitting addTeam', teamData);
+      socket.emit('addTeam', teamData);
+    });
+    
+    // Fetch teams
+    fetchTeamsBtn.addEventListener('click', () => {
+      log('Emitting fetchTeams');
+      socket.emit('fetchTeams');
+    });
+
+    // Initialize teams table
+    initTableBtn.addEventListener('click', () => {
+      log('Requesting teams table initialization');
+      socket.emit('initTeamsTable');
+    });
+  </script>
+</body>
+</html> 
