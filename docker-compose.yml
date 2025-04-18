@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  scoreboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: Scorify
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    volumes:
+      - ./assets:/app/assets
+    networks:
+      - scoreboard-network
+
+networks:
+  scoreboard-network:
+    driver: bridge 
