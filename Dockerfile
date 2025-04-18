@@ -1,59 +1,58 @@
-FROM node:18-alpine AS builder
+# ---------- Build Stage ----------
+    FROM node:18-alpine AS builder
 
-# Add labels
-LABEL org.opencontainers.image.title="Siam Inline Super League Scoreboard"
-LABEL org.opencontainers.image.description="Real-time hockey scoreboard overlay for OBS"
-LABEL org.opencontainers.image.vendor="Siam Inline Super League"
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files for dependency installation
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install --omit=dev
-
-# Copy application files
-COPY . .
-
-# Create logs directory
-RUN mkdir -p logs && chmod 755 logs
-
-FROM node:18-alpine
-
-# Create a non-root user and set permissions
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs
-
-# Create app directory and set proper ownership
-WORKDIR /app
-
-# Copy only necessary files from builder stage
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules /app/node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/server /app/server
-COPY --from=builder --chown=nodejs:nodejs /app/overlay /app/overlay
-COPY --from=builder --chown=nodejs:nodejs /app/controller /app/controller
-COPY --from=builder --chown=nodejs:nodejs /app/index.html /app/
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json /app/
-COPY --from=builder --chown=nodejs:nodejs /app/logs /app/logs
-
-# Set the environment variables with build args support
-ARG NODE_ENV=production
-ENV NODE_ENV=$NODE_ENV
-ENV PORT=3000
-
-# Set NODE_ENV to production for better performance
-ENV NODE_ENV=production
-
-# Expose the port
-EXPOSE 3000
-
-# Switch to non-root user
-USER nodejs
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD wget --spider -q http://localhost:3000 || exit 1
-
-# Start the application
-CMD ["npm", "start"] 
+    LABEL org.opencontainers.image.title="Siam Inline Super League Scoreboard"
+    LABEL org.opencontainers.image.description="Real-time hockey scoreboard overlay for OBS"
+    LABEL org.opencontainers.image.vendor="Siam Inline Super League"
+    
+    # Set working directory
+    WORKDIR /app
+    
+    # Copy package files first for cache efficiency
+    COPY package*.json ./
+    
+    # Install dependencies without devDependencies
+    RUN npm ci --omit=dev
+    
+    # Copy application source code
+    COPY . .
+    
+    # Create logs directory with proper permissions
+    RUN mkdir -p logs && chmod 755 logs
+    
+    # ---------- Production Stage ----------
+    FROM node:18-alpine
+    
+    # Create non-root user
+    RUN addgroup -g 1001 -S nodejs && \
+        adduser -S nodejs -u 1001 -G nodejs
+    
+    # Set working directory
+    WORKDIR /app
+    
+    # Copy only the necessary files from the builder stage
+    COPY --from=builder --chown=nodejs:nodejs /app/node_modules /app/node_modules
+    COPY --from=builder --chown=nodejs:nodejs /app/server /app/server
+    COPY --from=builder --chown=nodejs:nodejs /app/overlay /app/overlay
+    COPY --from=builder --chown=nodejs:nodejs /app/controller /app/controller
+    COPY --from=builder --chown=nodejs:nodejs /app/index.html /app/
+    COPY --from=builder --chown=nodejs:nodejs /app/package*.json /app/
+    COPY --from=builder --chown=nodejs:nodejs /app/logs /app/logs
+    
+    # Environment configuration
+    ARG NODE_ENV=production
+    ENV NODE_ENV=$NODE_ENV
+    ENV PORT=3000
+    
+    # Expose app port
+    EXPOSE 3000
+    
+    # Switch to non-root user
+    USER nodejs
+    
+    # Health check to ensure app is running
+    HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD wget --spider -q http://localhost:3000 || exit 1
+    
+    # Start the app
+    CMD ["npm", "start"]
+    
