@@ -1,61 +1,23 @@
-name: scorify
+version: '3.8'
 
 services:
   scoreboard:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        NODE_ENV: ${NODE_ENV:-production}
-      labels:
-        org.opencontainers.image.title: "Siam Inline Super League Scoreboard"
-        org.opencontainers.image.description: "Real-time hockey scoreboard overlay for OBS"
-    container_name: Scorify
+    container_name: siam-inline-scoreboard
     ports:
-      - "3000:3000"
+      - "3001:3000"
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - PORT=${PORT:-3000}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
+      - NODE_ENV=production
+      - SUPABASE_URL=https://jeatmebkzspsjxtyuepr.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplYXRtZWJrenNwc2p4dHl1ZXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5NzQ5NjEsImV4cCI6MjA2MDU1MDk2MX0.0G1LcZZ6O9YUG6es3zD6MSiIwo9T6w3wjITSxy5hMSs
     volumes:
-      - ./assets:/app/assets:ro
-      - scoreboard_logs:/app/logs
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
+      - ./assets:/app/assets
     networks:
-      - scorify-network
-
-volumes:
-  scoreboard_logs:
-    name: scorify_logs
-    driver: local
+      - scoreboard-network
 
 networks:
-  scorify-network:
-    name: scorify_network
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.28.0.0/16 
+  scoreboard-network:
+    driver: bridge 

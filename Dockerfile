@@ -38,11 +38,13 @@
     COPY --from=builder --chown=nodejs:nodejs /app/index.html /app/
     COPY --from=builder --chown=nodejs:nodejs /app/package*.json /app/
     COPY --from=builder --chown=nodejs:nodejs /app/logs /app/logs
+    COPY --from=builder --chown=nodejs:nodejs /app/assets /app/assets
     
     # Environment configuration
-    ARG NODE_ENV=production
-    ENV NODE_ENV=$NODE_ENV
+    ENV NODE_ENV=production
     ENV PORT=3000
+    ENV SUPABASE_URL=https://xaakqhceogyxvcccstav.supabase.co
+    ENV SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhYWtxaGNlb2d5eHZjY2NzdGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5NjQ0NzksImV4cCI6MjA2MDU0MDQ3OX0.ALvUeCFh6dN8V1YCoDHhsue8-Gx13Z8OMLblH2DQuNg
     
     # Expose app port
     EXPOSE 3000
