@@ -74,6 +74,24 @@ CREATE TABLE IF NOT EXISTS public.game_history (
 );
 ```
 
+```sql
+CREATE TABLE IF NOT EXISTS public.teams (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  abbreviation TEXT,
+  logo_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
+);
+
+-- Insert initial teams (optional)
+INSERT INTO public.teams (name, display_name, abbreviation, logo_url) 
+VALUES 
+('ASOKE ANTEATERS', 'Anteaters', 'ANT', '../assets/Anteaters_Official_Logo.png'),
+('BKK BAEBLADEZ', 'Bladez', 'BLZ', '../assets/Bladez_Official_Logo.png'),
+('RATTANAKORN RAIDERS', 'Raiders', 'RAI', '../assets/Raiders_Official_Logo.png');
+```
+
 ### Setting up OBS Studio
 
 1. Open OBS Studio
