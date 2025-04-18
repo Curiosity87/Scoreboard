@@ -1,0 +1,35 @@
+version: '3.9'
+
+# This override file is automatically merged with docker-compose.yml when using docker compose
+# Use this for development settings
+
+services:
+  scoreboard:
+    build:
+      args:
+        NODE_ENV: development
+    environment:
+      - NODE_ENV=development
+      - DEBUG=scoreboard:*
+    volumes:
+      # Override with additional bind mounts for development
+      - ./server:/app/server:ro
+      - ./controller:/app/controller:ro
+      - ./overlay:/app/overlay:ro
+      - ./index.html:/app/index.html:ro
+      - ./package.json:/app/package.json:ro
+      # Keep the node_modules in the container only (prevents conflicts)
+      - /app/node_modules
+    # Override the healthcheck for faster development
+    healthcheck:
+      interval: 10s
+    # Override resources for development
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1G
+    # Command for running in development mode with nodemon for auto-restart
+    command: >
+      sh -c "npm install nodemon -g && 
+             nodemon --watch server -e js server/index.js" 

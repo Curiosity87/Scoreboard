@@ -1,9 +1,61 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
 node_modules
-npm-debug.log
+package-lock.json
+
+# Git and version control
 .git
 .gitignore
+.github
+.gitlab-ci.yml
+
+# Development & environment files
+.env
+.env.*
+!.env.example
+.editorconfig
+.vscode
+.idea
+*.sublime-*
 .DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+tests
+
+# Build outputs
+dist
+build
+*.tar.gz
+*.tgz
+
+# Docker related
+docker-compose*.yml
+docker-compose*.yaml
+Dockerfile*
+.dockerignore
+
+# Documentation
+README.md
+DOCKER_README.md
+LICENSE
+docs
 *.md
-!README.md
-Dockerfile
-docker-compose.yml 
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.bak
+
+# Large or unused assets that should be mounted at runtime
+uploads
+*.mp4
+*.mov
+*.wav 
