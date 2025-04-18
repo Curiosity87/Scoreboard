@@ -12,7 +12,7 @@
     COPY package*.json ./
     
     # Install dependencies without devDependencies
-    RUN npm ci --omit=dev
+    RUN npm install --omit=dev
     
     # Copy application source code
     COPY . .
