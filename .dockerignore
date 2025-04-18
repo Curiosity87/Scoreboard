@@ -5,7 +5,7 @@ npm-debug.log*
 
 # Dependencies
 node_modules
-package-lock.json
+#package-lock.json
 
 # Git and version control
 .git
@@ -15,7 +15,7 @@ package-lock.json
 
 # Development & environment files
 .env
-.env.*
+#.env.*
 !.env.example
 .editorconfig
 .vscode
