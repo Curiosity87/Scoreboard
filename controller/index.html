@@ -298,6 +298,50 @@
           </div>
         </section>
         
+        <section class="section sound-settings-section">
+          <div class="sound-settings-header">
+            <h2>Goal Horn</h2>
+            <button id="toggle-sound-settings" class="btn secondary full-width">Show Sound Settings</button>
+          </div>
+          <div id="sound-settings-panel" class="sound-settings-panel" style="display: none;">
+            <div class="compact-goal-horn-settings">
+              <div class="goal-horn-volume-container">
+                <label for="goal-horn-volume">Volume:</label>
+                <input type="range" id="goal-horn-volume" min="0" max="100" value="80" class="volume-slider">
+                <span id="volume-value">80%</span>
+              </div>
+              
+              <div class="goal-horn-controls">
+                <div class="goal-horn-master-toggle">
+                  <input type="checkbox" id="goal-horn-master-enabled" checked>
+                  <label for="goal-horn-master-enabled">Enable Sound</label>
+                </div>
+                
+                <div class="team-horn-toggles">
+                  <div class="team-horn-toggle">
+                    <input type="checkbox" id="team1-goal-horn-enabled" checked>
+                    <label for="team1-goal-horn-enabled">Home</label>
+                  </div>
+                  <div class="team-horn-toggle">
+                    <input type="checkbox" id="team2-goal-horn-enabled" checked>
+                    <label for="team2-goal-horn-enabled">Away</label>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="goal-horn-file-container">
+                <label for="goal-horn-file" class="small-label">Custom Horn:</label>
+                <input type="file" id="goal-horn-file" accept="audio/*" class="file-input">
+              </div>
+              
+              <div class="test-buttons">
+                <button id="team1-test-horn" class="btn small-btn">Test Home</button>
+                <button id="team2-test-horn" class="btn small-btn">Test Away</button>
+              </div>
+            </div>
+          </div>
+        </section>
+        
         <section class="section period-section" style="display: none;">
           <div class="period-header">
             <h2>Period</h2>
@@ -318,51 +362,6 @@
           </div>
         </section>
       </div>
-      
-      <!-- New Sound Settings Section at the bottom -->
-      <section class="section sounds-section">
-        <h2>Sound Settings</h2>
-        <div class="goal-horn-config">
-          <h3>Goal Horn Settings</h3>
-          <div class="sounds-container">
-            <div class="goal-horn-main-settings">
-              <div class="goal-horn-file-container">
-                <label for="goal-horn-file">Upload Custom Goal Horn:</label>
-                <input type="file" id="goal-horn-file" accept="audio/*" class="file-input">
-              </div>
-              <div class="goal-horn-volume-container">
-                <label for="goal-horn-volume">Volume:</label>
-                <input type="range" id="goal-horn-volume" min="0" max="100" value="80" class="volume-slider">
-                <span id="volume-value">80%</span>
-              </div>
-              <div class="goal-horn-master-toggle">
-                <input type="checkbox" id="goal-horn-master-enabled" checked>
-                <label for="goal-horn-master-enabled">Enable Goal Horn Sound</label>
-              </div>
-            </div>
-            
-            <div class="team-goal-horn-settings">
-              <div class="team-horn-control">
-                <h4>Home Team</h4>
-                <div class="goal-horn-toggle">
-                  <input type="checkbox" id="team1-goal-horn-enabled" checked>
-                  <label for="team1-goal-horn-enabled">Play Goal Horn on Score</label>
-                </div>
-                <button id="team1-test-horn" class="btn">Test Goal Horn</button>
-              </div>
-              
-              <div class="team-horn-control">
-                <h4>Away Team</h4>
-                <div class="goal-horn-toggle">
-                  <input type="checkbox" id="team2-goal-horn-enabled" checked>
-                  <label for="team2-goal-horn-enabled">Play Goal Horn on Score</label>
-                </div>
-                <button id="team2-test-horn" class="btn">Test Goal Horn</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
     
     <footer>

@@ -1,5 +1,30 @@
-// Connect to the server
-const socket = io();
+// Connect to the server with reconnection options
+const socket = io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 20000
+});
+
+// Add reconnection event handlers
+socket.on('reconnect', (attemptNumber) => {
+  console.log(`Reconnected to server after ${attemptNumber} attempts`);
+  // Request current game state after reconnection
+  socket.emit('requestGameState');
+});
+
+socket.on('reconnect_attempt', (attemptNumber) => {
+  console.log(`Reconnection attempt ${attemptNumber}`);
+});
+
+socket.on('reconnect_error', (error) => {
+  console.error('Reconnection error:', error);
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('Failed to reconnect to server');
+});
 
 // DOM Elements
 const team1Name = document.getElementById('team1-name');
@@ -17,7 +42,7 @@ const goalHornAudio = document.getElementById('goal-horn-audio');
 // Set default goal horn
 goalHornAudio.src = '../assets/sounds/goal_horn.mp3';
 let customGoalHornDataUrl = null;
-let goalHornVolume = 0.8; // Default volume is 80%
+let goalHornVolume = 0.0; // Default volume is 0% (disabled)
 
 // Make sure audio can autoplay
 goalHornAudio.preload = 'auto';
@@ -84,13 +109,70 @@ function formatTime(seconds) {
 }
 
 // Update score with animation
-function updateScoreWithAnimation(element, score) {
-  element.classList.add('score-changed');
-  element.textContent = score;
+const updateScoreWithAnimation = (element, newScore) => {
+  const currentScore = parseInt(element.textContent);
+  if (currentScore !== newScore) {
+    // Update the text content first to preserve position
+    element.textContent = newScore;
+    
+    // Add the flash animation class
+    element.classList.add('score-changed');
+    
+    // Add flash effect to the entire scoreboard when score changes
+    if (newScore > currentScore) {
+      const scoreboardEl = document.querySelector('.scoreboard');
+      scoreboardEl.classList.add('goal-scored');
+      
+      // Play goal horn automatically when a goal is scored
+      playGoalHorn();
+      
+      // Remove the classes after the animation completes
+      setTimeout(() => {
+        scoreboardEl.classList.remove('goal-scored');
+      }, 1500);
+    }
+    
+    // Remove the animation class after it completes
+    setTimeout(() => {
+      element.classList.remove('score-changed');
+    }, 800);
+  }
+};
+
+// Function to play the goal horn
+function playGoalHorn() {
+  if (goalHornVolume <= 0) {
+    console.log('Goal horn not played: volume is 0 or disabled');
+    return;
+  }
   
-  setTimeout(() => {
-    element.classList.remove('score-changed');
-  }, 500);
+  // Ensure we have a sound source
+  if (!goalHornAudio.src || goalHornAudio.src === '') {
+    console.log('No goal horn source, setting default');
+    goalHornAudio.src = '../assets/sounds/goal_horn.mp3';
+  }
+  
+  // Set volume and play
+  goalHornAudio.volume = goalHornVolume;
+  goalHornAudio.currentTime = 0; // Reset to beginning
+  
+  // Create a promise to play the sound
+  const playPromise = goalHornAudio.play();
+  
+  // Handle play errors
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      console.log('Goal horn playing successfully');
+    }).catch(error => {
+      console.error('Error playing goal horn:', error);
+      
+      // Try again with user interaction simulation
+      document.body.click();
+      setTimeout(() => {
+        goalHornAudio.play().catch(e => console.error('Second attempt failed:', e));
+      }, 100);
+    });
+  }
 }
 
 // Format period display
@@ -183,9 +265,25 @@ socket.on('timeUpdate', (time) => {
   timerElement.textContent = formatTime(time);
 });
 
-socket.on('scoreUpdate', (teams) => {
-  updateScoreWithAnimation(team1Score, teams.team1.score);
-  updateScoreWithAnimation(team2Score, teams.team2.score);
+socket.on('scoreUpdate', (data) => {
+  // Extract teams and the team that was updated
+  const { teams, updatedTeam } = data;
+  
+  // Only animate the team that was updated
+  if (updatedTeam === 'team1') {
+    updateScoreWithAnimation(team1Score, teams.team1.score);
+    // Update team2 score without animation
+    team2Score.textContent = teams.team2.score;
+  } else if (updatedTeam === 'team2') {
+    updateScoreWithAnimation(team2Score, teams.team2.score);
+    // Update team1 score without animation
+    team1Score.textContent = teams.team1.score;
+  } else {
+    // Fallback to updating both if no specific team is provided
+    // This helps maintain backward compatibility
+    updateScoreWithAnimation(team1Score, teams.team1.score);
+    updateScoreWithAnimation(team2Score, teams.team2.score);
+  }
 });
 
 socket.on('teamUpdate', (teams) => {
@@ -340,4 +438,186 @@ socket.on('goalHornSettings', (settings) => {
     customGoalHornDataUrl = settings.customSound;
     goalHornAudio.src = customGoalHornDataUrl;
   }
+});
+
+// Add connection monitoring to detect disconnects
+let lastPingResponse = Date.now();
+let lastStateUpdate = Date.now();
+let connectionMonitorInterval;
+let consecutiveFailedUpdates = 0;
+
+// Ping the server every 1 seconds to verify connection
+function startConnectionMonitor() {
+  connectionMonitorInterval = setInterval(() => {
+    const now = Date.now();
+    
+    // Force a refresh if no ping response in 8 seconds
+    if (now - lastPingResponse > 8000) {
+      console.error('No server response for 8 seconds, refreshing page...');
+      window.location.reload();
+      return;
+    }
+    
+    // Force a refresh if no state update in 10 seconds
+    if (now - lastStateUpdate > 10000) {
+      console.error('No state updates for 10 seconds, refreshing page...');
+      consecutiveFailedUpdates++;
+      
+      if (consecutiveFailedUpdates >= 3) {
+        window.location.reload();
+        return;
+      } else {
+        // Request a new state update
+        socket.emit('requestGameState');
+      }
+    } else {
+      consecutiveFailedUpdates = 0;
+    }
+    
+    // Send a ping if socket is connected
+    if (socket.connected) {
+      socket.emit('ping');
+      
+      // Also request game state occasionally
+      if (now % 5000 < 1000) {
+        socket.emit('requestGameState');
+      }
+    } else {
+      console.warn('Socket disconnected, attempting to reconnect...');
+      socket.connect();
+      
+      // Try to force a reconnection if socket methods fail
+      setTimeout(() => {
+        if (!socket.connected) {
+          console.warn('Socket still disconnected, forcing page refresh');
+          window.location.reload();
+        }
+      }, 2000);
+    }
+  }, 1000); // Check every second
+}
+
+// Listen for online/offline events
+window.addEventListener('online', () => {
+  console.log('Browser reports network connection is back online');
+  socket.connect();
+  socket.emit('requestGameState');
+  lastStateUpdate = Date.now(); // Reset the timer
+});
+
+window.addEventListener('offline', () => {
+  console.log('Browser reports network connection is offline');
+});
+
+// Add visibility change detection
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    console.log('Page became visible, requesting current state');
+    socket.emit('requestGameState');
+    lastStateUpdate = Date.now(); // Reset the timer
+  }
+});
+
+// Start the connection monitor when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+  startConnectionMonitor();
+  
+  // Initial request for game state
+  socket.emit('requestGameState');
+});
+
+// Listen for pong response from server
+socket.on('pong', () => {
+  lastPingResponse = Date.now();
+});
+
+// Update lastStateUpdate whenever we receive a game state update
+socket.on('gameState', () => {
+  lastStateUpdate = Date.now();
+});
+
+socket.on('scoreUpdate', () => {
+  lastStateUpdate = Date.now();
+});
+
+socket.on('teamUpdate', () => {
+  lastStateUpdate = Date.now();
+});
+
+socket.on('periodUpdate', () => {
+  lastStateUpdate = Date.now();
+});
+
+socket.on('timeUpdate', () => {
+  lastStateUpdate = Date.now();
+});
+
+// Add handler for direct overlay updates
+socket.on('overlayUpdate', (update) => {
+  console.log('Received overlay update:', update);
+
+  // Get teams data from stored value if available
+  const teamsData = window.teamsData || [];
+
+  // Update team names
+  const team1DisplayName = getTeamDisplayName(update.teams.team1.name, teamsData);
+  const team2DisplayName = getTeamDisplayName(update.teams.team2.name, teamsData);
+  
+  team1Name.textContent = team1DisplayName;
+  team2Name.textContent = team2DisplayName;
+  
+  // Update scores with animation if they changed
+  const current1Score = parseInt(team1Score.textContent);
+  const current2Score = parseInt(team2Score.textContent);
+  const new1Score = update.teams.team1.score;
+  const new2Score = update.teams.team2.score;
+  
+  if (current1Score !== new1Score) {
+    updateScoreWithAnimation(team1Score, new1Score);
+  }
+  
+  if (current2Score !== new2Score) {
+    updateScoreWithAnimation(team2Score, new2Score);
+  }
+  
+  // Update logos
+  if (update.teams.team1.logo) {
+    team1Logo.src = update.teams.team1.logo;
+  } else {
+    team1Logo.src = '../assets/default-logo.svg';
+  }
+  
+  if (update.teams.team2.logo) {
+    team2Logo.src = update.teams.team2.logo;
+  } else {
+    team2Logo.src = '../assets/default-logo.svg';
+  }
+  
+  // Update timer
+  timerElement.textContent = formatTime(update.timer.time);
+  
+  // Update period
+  periodElement.textContent = formatPeriod(update.period);
+  
+  // Update penalty displays
+  if (update.teams.team1.penalty) {
+    updatePenaltyDisplay(
+      'team1', 
+      update.teams.team1.penalty.time, 
+      update.teams.team1.penalty.active,
+      update.teams.team1.penalty.visible
+    );
+  }
+  
+  if (update.teams.team2.penalty) {
+    updatePenaltyDisplay(
+      'team2', 
+      update.teams.team2.penalty.time, 
+      update.teams.team2.penalty.active,
+      update.teams.team2.penalty.visible
+    );
+  }
+  
+  // Update timestamp for connection monitoring
+  lastStateUpdate = Date.now();
 }); 

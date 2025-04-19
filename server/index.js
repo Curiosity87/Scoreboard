@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const { v4: uuidv4 } = require('uuid');
 
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -91,11 +92,12 @@ let gameState = {
     shootoutMinutes: 5
   },
   goalHorn: {
-    enabled: true,
+    enabled: false,
     volume: 80,
-    team1Enabled: true,
-    team2Enabled: true
-  }
+    team1Enabled: false,
+    team2Enabled: false
+  },
+  broadcastId: uuidv4()
 };
 
 // Helper function to initialize game info with current date and time
@@ -369,6 +371,9 @@ function startTimer() {
       gameState.timer.time--;
       io.emit('timeUpdate', gameState.timer.time);
       
+      // Also broadcast a lightweight update to overlay
+      broadcastOverlayUpdate();
+      
       // Handle penalty timers if active
       ['team1', 'team2'].forEach(team => {
         if (gameState.teams[team].penalty.active && gameState.teams[team].penalty.time > 0) {
@@ -453,34 +458,173 @@ function getLogoWithFallback(logoUrl) {
   return logoUrl || '../assets/default-logo.svg';
 }
 
+// Create a function to broadcast game state updates to all clients
+function broadcastGameState(socket = null) {
+  const recipient = socket || io;
+  
+  // Increment a sequence ID to track latest state
+  gameState.broadcastId = uuidv4();
+  
+  // Fetch teams data to include with the game state
+  fetchTeams().then(teamsResult => {
+    const teamsInfo = teamsResult.success ? teamsResult.data : [];
+    
+    // Create a copy of the game state with team info
+    const stateWithTeams = {
+      ...createSafeCopy(gameState),
+      _teamsInfo: teamsInfo,
+      _timestamp: Date.now()
+    };
+    
+    // Send the full game state to the client(s)
+    recipient.emit('gameState', stateWithTeams);
+  }).catch(err => {
+    console.error('Error sending game state:', err);
+    // Still send state even if team data fails
+    recipient.emit('gameState', {
+      ...createSafeCopy(gameState),
+      _timestamp: Date.now()
+    });
+  });
+}
+
+// Function to broadcast overlay-specific updates
+function broadcastOverlayUpdate() {
+  // Create a lightweight update with just the essential data
+  const overlayUpdate = {
+    teams: {
+      team1: {
+        name: gameState.teams.team1.name,
+        score: gameState.teams.team1.score,
+        logo: gameState.teams.team1.logo,
+        penalty: gameState.teams.team1.penalty
+      },
+      team2: {
+        name: gameState.teams.team2.name,
+        score: gameState.teams.team2.score,
+        logo: gameState.teams.team2.logo,
+        penalty: gameState.teams.team2.penalty
+      }
+    },
+    timer: {
+      time: gameState.timer.time,
+      isRunning: gameState.timer.isRunning
+    },
+    period: gameState.period,
+    timestamp: Date.now()
+  };
+  
+  io.emit('overlayUpdate', overlayUpdate);
+}
+
 // Socket.IO event handlers
 io.on('connection', async (socket) => {
   console.log('Client connected');
   
-  // Get team info to include with game state
-  const teamsResult = await fetchTeams();
-  const teamsInfo = teamsResult.success ? teamsResult.data : [];
-  
-  // Send current game state to the client
-  socket.emit('gameState', {
-    ...createSafeCopy(gameState),
-    _teamsInfo: teamsInfo
-  });
+  try {
+    // Fetch teams data to include with the game state
+    const teamsResult = await fetchTeams();
+    const teamsInfo = teamsResult.success ? teamsResult.data : [];
+    
+    // Send the full game state with team info on connection
+    const stateWithTeams = {
+      ...createSafeCopy(gameState),
+      _teamsInfo: teamsInfo
+    };
+    
+    socket.emit('gameState', stateWithTeams);
+    
+    // Also send a lightweight overlay update
+    broadcastOverlayUpdate();
+  } catch (err) {
+    console.error('Error sending initial game state:', err);
+    socket.emit('gameState', createSafeCopy(gameState));
+    
+    // Still try to send overlay update even if full state fails
+    broadcastOverlayUpdate();
+  }
   
   // Handle timer events
   socket.on('startTimer', () => {
     startTimer();
-    socket.broadcast.emit('timerStarted');
+    io.emit('timerStarted');
+    // Send immediate overlay update
+    broadcastOverlayUpdate();
   });
   
   socket.on('stopTimer', () => {
     stopTimer();
-    socket.broadcast.emit('timerStopped');
+    io.emit('timerStopped');
+    // Send immediate overlay update
+    broadcastOverlayUpdate();
   });
   
   socket.on('setTime', (seconds) => {
     gameState.timer.time = seconds;
     io.emit('timeUpdate', gameState.timer.time);
+    // Broadcast to overlay
+    broadcastOverlayUpdate();
+  });
+  
+  // Handle game state requests - for reconnecting clients
+  socket.on('requestGameState', async () => {
+    console.log('Game state requested by client');
+    broadcastGameState(socket);
+  });
+
+  // Handle ping requests for connection monitoring
+  socket.on('ping', () => {
+    socket.emit('pong');
+  });
+  
+  socket.on('updateScore', (data) => {
+    const { team, value } = data;
+    // Ensure score is always an integer
+    gameState.teams[team].score = parseInt(value) || 0;
+    io.emit('scoreUpdate', { 
+      teams: createSafeCopy(gameState.teams),
+      updatedTeam: team
+    });
+    
+    // Broadcast overlay update for real-time updates
+    broadcastOverlayUpdate();
+  });
+  
+  socket.on('updateTeam', async (data) => {
+    // Check if this is a team update for the game state or a team in the database
+    if (data.team && (data.team === 'team1' || data.team === 'team2')) {
+      // This is a team update for the game state
+      const { team, data: teamData } = data;
+      
+      // Update only the provided fields
+      Object.keys(teamData).forEach(key => {
+        if (key === 'logo') {
+          gameState.teams[team][key] = getLogoWithFallback(teamData[key]);
+        } else {
+          gameState.teams[team][key] = teamData[key];
+        }
+      });
+      
+      // Use the broadcast function instead of direct emit
+      broadcastGameState();
+    } else {
+      // This is a team update for the database
+      const { id, teamData } = data;
+      const result = await updateTeam(id, teamData);
+      if (result.success) {
+        io.emit('teamUpdated', result.data);
+        // Also send full state after team update
+        setTimeout(() => broadcastGameState(), 100);
+      }
+      socket.emit('teamUpdateResult', result);
+    }
+  });
+  
+  socket.on('updatePeriod', (period) => {
+    gameState.period = period;
+    io.emit('periodUpdate', period);
+    // Broadcast to overlay
+    broadcastOverlayUpdate();
   });
   
   // Handle team management
@@ -504,41 +648,6 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('updateTeam', async (data) => {
-    // Check if this is a team update for the game state or a team in the database
-    if (data.team && (data.team === 'team1' || data.team === 'team2')) {
-      // This is a team update for the game state
-      const { team, data: teamData } = data;
-      
-      // Update only the provided fields
-      Object.keys(teamData).forEach(key => {
-        if (key === 'logo') {
-          gameState.teams[team][key] = getLogoWithFallback(teamData[key]);
-        } else {
-          gameState.teams[team][key] = teamData[key];
-        }
-      });
-      
-      // Look up full team info for abbreviations
-      const result = await fetchTeams();
-      const teamsInfo = result.success ? result.data : [];
-      
-      // Add teamsInfo to the broadcast so clients have access to abbreviations
-      io.emit('teamUpdate', {
-        ...createSafeCopy(gameState.teams),
-        _teamsInfo: teamsInfo
-      });
-    } else {
-      // This is a team update for the database
-      const { id, teamData } = data;
-      const result = await updateTeam(id, teamData);
-      if (result.success) {
-        io.emit('teamUpdated', result.data);
-      }
-      socket.emit('teamUpdateResult', result);
-    }
-  });
-
   socket.on('deleteTeam', async (id) => {
     const result = await deleteTeam(id);
     if (result.success) {
@@ -547,16 +656,13 @@ io.on('connection', async (socket) => {
     socket.emit('teamDeleteResult', result);
   });
   
-  socket.on('updateScore', (data) => {
-    const { team, score } = data;
-    gameState.teams[team].score = score;
-    io.emit('scoreUpdate', createSafeCopy(gameState.teams));
-  });
-  
   // Handle goal horn requests
   socket.on('playGoalHorn', (data) => {
     // Play goal horn for all clients
     io.emit('playGoalHorn', data);
+    
+    // Broadcast overlay update
+    broadcastOverlayUpdate();
   });
   
   // Handle goal horn settings updates
@@ -574,12 +680,9 @@ io.on('connection', async (socket) => {
     
     // Broadcast the updated settings to all clients
     io.emit('goalHornSettings', createSafeCopy(gameState.goalHorn));
-  });
-  
-  // Handle period updates
-  socket.on('updatePeriod', (period) => {
-    gameState.period = period;
-    io.emit('periodUpdate', period);
+    
+    // Broadcast overlay update
+    broadcastOverlayUpdate();
   });
   
   // Handle game info updates
@@ -677,11 +780,12 @@ io.on('connection', async (socket) => {
         ...gameState.config // Keep existing config
       },
       goalHorn: {
-        enabled: true,
+        enabled: false,
         volume: 80,
-        team1Enabled: true,
-        team2Enabled: true
-      }
+        team1Enabled: false,
+        team2Enabled: false
+      },
+      broadcastId: uuidv4()
     };
     
     // Broadcast reset state to all clients
@@ -766,9 +870,12 @@ io.on('connection', async (socket) => {
       active: gameState.teams[team].penalty.active,
       visible: gameState.teams[team].penalty.visible
     });
+    
+    // Broadcast overlay update for real-time updates
+    broadcastOverlayUpdate();
   });
   
-  // Handle penalty visibility toggle
+  // Send an overlayUpdate right after connection for immediate sync
   socket.on('togglePenaltyVisibility', (data) => {
     const { team, visible } = data;
     if (!gameState.teams[team]) return;
@@ -781,6 +888,9 @@ io.on('connection', async (socket) => {
       team,
       visible
     });
+    
+    // Broadcast overlay update
+    broadcastOverlayUpdate();
   });
   
   socket.on('disconnect', () => {

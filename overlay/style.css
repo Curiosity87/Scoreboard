@@ -155,15 +155,56 @@ body {
   left: calc(100% + 5px);
 }
 
-/* Animations */
-@keyframes scoreChange {
-  0% { transform: translateY(-50%) scale(1); }
-  50% { transform: translateY(-50%) scale(1.2); background-color: rgba(220, 53, 69, 0.8); }
-  100% { transform: translateY(-50%) scale(1); }
+/* Score change animation - RED FLASHING ONLY */
+@keyframes score-pulse {
+  0% {
+    color: #ffffff;
+  }
+  25% {
+    color: #ff5555;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+  }
+  50% {
+    color: #ff0000;
+    text-shadow: 0 0 15px rgba(255, 0, 0, 0.85), 0 0 5px rgba(255, 0, 0, 0.5);
+  }
+  75% {
+    color: #ff5555;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+  }
+  100% {
+    color: #ffffff;
+  }
 }
 
 .score-changed {
-  animation: scoreChange 0.5s ease;
+  animation: score-pulse 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* Goal scored animation for the entire scoreboard */
+@keyframes goal-flash {
+  0%, 100% {
+    box-shadow: 0 0 0 transparent;
+  }
+  10%, 90% {
+    box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.7);
+  }
+  20%, 80% {
+    box-shadow: 0 0 0 6px rgba(255, 0, 0, 0.8);
+  }
+  30%, 70% {
+    box-shadow: 0 0 0 8px rgba(255, 0, 0, 0.9);
+  }
+  40%, 60% {
+    box-shadow: 0 0 30px 10px rgba(255, 0, 0, 1);
+  }
+  50% {
+    box-shadow: 0 0 40px 15px rgba(255, 0, 0, 1);
+  }
+}
+
+.goal-scored {
+  animation: goal-flash 1.5s ease-out;
 }
 
 /* Penalty timer styling */

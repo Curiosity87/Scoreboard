@@ -1,9 +1,9 @@
-// Connect to the server
+// Initialize socket
 const socket = io();
 
-// DOM Elements - Connection
+// DOM Elements - Connection Status
 const connectionIndicator = document.getElementById('connection-indicator');
-const connectionText = document.getElementById('connection-text');
+const connectionStatus = document.getElementById('connection-text');
 
 // DOM Elements - Game Info
 const gameDateInput = document.getElementById('game-date');
@@ -95,6 +95,10 @@ const cancelTeamBtn = document.getElementById('cancel-team');
 const toggleGameInfoBtn = document.getElementById('toggle-game-info');
 const gameInfoPanel = document.getElementById('game-info-panel');
 
+// DOM Elements - Sound Settings Toggle
+const toggleSoundSettingsBtn = document.getElementById('toggle-sound-settings');
+const soundSettingsPanel = document.getElementById('sound-settings-panel');
+
 // DOM elements for penalty controls
 const team1PenaltyTime = document.getElementById('team1-penalty-time');
 const team1PenaltyEnabled = document.getElementById('team1-penalty-enabled');
@@ -131,6 +135,10 @@ let team2PenaltyInterval;
 // Add variables to track penalty display state
 let team1PenaltyVisible = true;
 let team2PenaltyVisible = true;
+
+// Add these variables for score tracking at the top of the file
+let team1Score = 0;
+let team2Score = 0;
 
 // Game state
 let gameState = {
@@ -195,11 +203,53 @@ function updateGameInfoDisplay() {
   }
 }
 
+// Initialize connection status indicator
+connectionStatus.innerHTML = 'Disconnected';
+connectionIndicator.classList.remove('connected');
+
+// Initialize document ready function
+document.addEventListener('DOMContentLoaded', () => {
+  // Explicitly set initial styles to ensure they're properly applied
+  gameInfoPanel.style.display = 'none';
+  
+  // Initialize toggle functionality for sections
+  // Game Info toggle
+  toggleGameInfoBtn.addEventListener('click', function() {
+    console.log('Toggle game info button clicked');
+    // Use getComputedStyle to accurately determine current visibility
+    const computedStyle = window.getComputedStyle(gameInfoPanel);
+    const isVisible = computedStyle.display !== 'none';
+    
+    if (!isVisible) {
+      // Show panel
+      gameInfoPanel.style.display = 'block';
+      toggleGameInfoBtn.textContent = 'Hide Game Date/Time';
+      console.log('Game info panel shown');
+    } else {
+      // Hide panel
+      gameInfoPanel.style.display = 'none';
+      toggleGameInfoBtn.textContent = 'Show Game Date/Time';
+      console.log('Game info panel hidden');
+    }
+  });
+  
+  // Sound Settings toggle
+  toggleSoundSettingsBtn.addEventListener('click', () => {
+    if (soundSettingsPanel.style.display === 'none') {
+      soundSettingsPanel.style.display = 'block';
+      toggleSoundSettingsBtn.textContent = 'Hide Sound Settings';
+    } else {
+      soundSettingsPanel.style.display = 'none';
+      toggleSoundSettingsBtn.textContent = 'Show Sound Settings';
+    }
+  });
+});
+
 // Socket event handlers
 socket.on('connect', () => {
   connectionIndicator.classList.remove('disconnected');
   connectionIndicator.classList.add('connected');
-  connectionText.textContent = 'Connected';
+  connectionStatus.textContent = 'Connected';
   console.log('Connected to server');
   
   if (gameState.team1 && gameState.team2) {
@@ -223,13 +273,17 @@ socket.on('connect', () => {
   // Automatically load game history on connection
   loadGameHistory();
   
-  // Add this line to load teams on connect
+  // Load teams on connect
   loadTeams();
+  
+  // Always show team management panel
+  teamManagementPanel.style.display = 'flex';
+  toggleTeamMgmtBtn.textContent = 'Hide Team Management';
 });
 
 socket.on('disconnect', () => {
   connectionIndicator.classList.remove('connected');
-  connectionText.textContent = 'Disconnected';
+  connectionStatus.textContent = 'Disconnected';
   console.log('Disconnected from server');
 });
 
@@ -246,6 +300,10 @@ socket.on('gameState', (state) => {
   team2NameInput.value = state.teams.team2.name;
   team2ScoreDisplay.textContent = state.teams.team2.score;
   team2LogoInput.value = state.teams.team2.logo;
+  
+  // Update local score tracking variables
+  team1Score = state.teams.team1.score;
+  team2Score = state.teams.team2.score;
   
   periodDisplay.textContent = state.period;
   
@@ -341,9 +399,19 @@ socket.on('timerStopped', () => {
   gameState.timer.isRunning = false;
 });
 
-socket.on('scoreUpdate', (teams) => {
+socket.on('scoreUpdate', (data) => {
+  // Extract the teams data properly from the response structure
+  const teams = data.teams;
+  
+  // Update displayed scores
   team1ScoreDisplay.textContent = teams.team1.score;
   team2ScoreDisplay.textContent = teams.team2.score;
+  
+  // Also update local score tracking variables
+  team1Score = parseInt(teams.team1.score) || 0;
+  team2Score = parseInt(teams.team2.score) || 0;
+  
+  // Update gameState
   gameState.teams = teams;
 });
 
@@ -630,8 +698,8 @@ finishGameBtn.addEventListener('click', () => {
     socket.once('gameSaved', (response) => {
       if (response.success) {
         // Reset scores to 0 and period to 1
-        socket.emit('updateScore', { team: 'team1', score: 0 });
-        socket.emit('updateScore', { team: 'team2', score: 0 });
+        socket.emit('updateScore', { team: 'team1', value: 0 });
+        socket.emit('updateScore', { team: 'team2', value: 0 });
         socket.emit('updatePeriod', 1);
         
         // Reset timer to 15 minutes
@@ -809,22 +877,23 @@ team1LogoFile.addEventListener('change', (e) => {
 });
 
 team1ScorePlusBtn.addEventListener('click', () => {
-  const newScore = gameState.teams.team1.score + 1;
-  socket.emit('updateScore', { team: 'team1', score: newScore });
-  
-  // Play goal horn if enabled
-  if (goalHornSettings.enabled && goalHornSettings.team1Enabled) {
-    socket.emit('playGoalHorn', { 
-      team: 'team1', 
-      volume: goalHornSettings.volume,
-      customSound: goalHornSettings.customSound
-    });
+  if (connectionStatus) {
+    team1Score = parseInt(team1Score) || 0;
+    team1Score++;
+    team1ScoreDisplay.textContent = team1Score;
+    socket.emit('updateScore', { team: 'team1', value: team1Score });
+    saveEvent('Team 1 scored: ' + team1Score);
   }
 });
 
 team1ScoreMinusBtn.addEventListener('click', () => {
-  const newScore = Math.max(0, gameState.teams.team1.score - 1);
-  socket.emit('updateScore', { team: 'team1', score: newScore });
+  if (connectionStatus && team1Score > 0) {
+    team1Score = parseInt(team1Score) || 0;
+    team1Score--;
+    team1ScoreDisplay.textContent = team1Score;
+    socket.emit('updateScore', { team: 'team1', value: team1Score });
+    saveEvent('Team 1 score adjusted: ' + team1Score);
+  }
 });
 
 updateTeam2NameBtn.addEventListener('click', () => {
@@ -867,22 +936,23 @@ team2LogoFile.addEventListener('change', (e) => {
 });
 
 team2ScorePlusBtn.addEventListener('click', () => {
-  const newScore = gameState.teams.team2.score + 1;
-  socket.emit('updateScore', { team: 'team2', score: newScore });
-  
-  // Play goal horn if enabled
-  if (goalHornSettings.enabled && goalHornSettings.team2Enabled) {
-    socket.emit('playGoalHorn', { 
-      team: 'team2', 
-      volume: goalHornSettings.volume,
-      customSound: goalHornSettings.customSound
-    });
+  if (connectionStatus) {
+    team2Score = parseInt(team2Score) || 0;
+    team2Score++;
+    team2ScoreDisplay.textContent = team2Score;
+    socket.emit('updateScore', { team: 'team2', value: team2Score });
+    saveEvent('Team 2 scored: ' + team2Score);
   }
 });
 
 team2ScoreMinusBtn.addEventListener('click', () => {
-  const newScore = Math.max(0, gameState.teams.team2.score - 1);
-  socket.emit('updateScore', { team: 'team2', score: newScore });
+  if (connectionStatus && team2Score > 0) {
+    team2Score = parseInt(team2Score) || 0;
+    team2Score--;
+    team2ScoreDisplay.textContent = team2Score;
+    socket.emit('updateScore', { team: 'team2', value: team2Score });
+    saveEvent('Team 2 score adjusted: ' + team2Score);
+  }
 });
 
 // Period Controls
@@ -1189,8 +1259,17 @@ socket.on('teamsData', (result) => {
   if (result.success) {
     teamsData = result.data;
     renderTeamsList();
+    
+    // Always update team presets when we get new teams data
+    updateTeamPresets();
+    
+    // Make sure the panel is visible by default
+    if (teamManagementPanel.style.display !== 'flex') {
+      teamManagementPanel.style.display = 'flex';
+      toggleTeamMgmtBtn.textContent = 'Hide Team Management';
+    }
   } else {
-    alert('Failed to load teams: ' + (result.error ? result.error.message : 'Unknown error'));
+    console.error('Failed to load teams:', (result.error ? result.error.message : 'Unknown error'));
   }
 });
 
@@ -1198,6 +1277,9 @@ socket.on('teamAdded', (team) => {
   teamsData.push(team);
   renderTeamsList();
   resetTeamForm();
+  
+  // Always update team presets when a team is added
+  updateTeamPresets();
 });
 
 socket.on('teamUpdated', (updatedTeam) => {
@@ -1206,12 +1288,18 @@ socket.on('teamUpdated', (updatedTeam) => {
     teamsData[index] = updatedTeam;
     renderTeamsList();
     resetTeamForm();
+    
+    // Always update team presets when a team is updated
+    updateTeamPresets();
   }
 });
 
 socket.on('teamDeleted', (id) => {
   teamsData = teamsData.filter(t => t.id !== parseInt(id));
   renderTeamsList();
+  
+  // Always update team presets when a team is deleted
+  updateTeamPresets();
 });
 
 socket.on('teamAddResult', (result) => {
@@ -1256,6 +1344,7 @@ toggleTeamMgmtBtn.addEventListener('click', () => {
   teamManagementPanel.style.display = isVisible ? 'none' : 'flex';
   toggleTeamMgmtBtn.textContent = isVisible ? 'Show Team Management' : 'Hide Team Management';
   
+  // If we're showing the panel, force a reload immediately
   if (!isVisible) {
     loadTeams();
   }
@@ -1378,16 +1467,8 @@ saveGameConfigBtn.addEventListener('click', () => {
   }, 3000);
 });
 
-// Toggle game info panel
-toggleGameInfoBtn.addEventListener('click', () => {
-  if (gameInfoPanel.style.display === 'none') {
-    gameInfoPanel.style.display = 'block';
-    toggleGameInfoBtn.textContent = 'Hide Game Date/Time';
-  } else {
-    gameInfoPanel.style.display = 'none';
-    toggleGameInfoBtn.textContent = 'Show Game Date/Time';
-  }
-});
+// Add this variable to track the team reload interval
+let teamReloadInterval;
 
 // Autoload teams when the page loads
 document.addEventListener('DOMContentLoaded', () => {
@@ -1399,6 +1480,15 @@ document.addEventListener('DOMContentLoaded', () => {
     teamManagementPanel.style.display = 'flex';
     toggleTeamMgmtBtn.textContent = 'Hide Team Management';
   }, 500); // Slight delay to ensure socket connection is established
+  
+  // Set up auto-reload for teams every 10 seconds
+  teamReloadInterval = setInterval(() => {
+    // Only reload if the team management panel is visible
+    if (teamManagementPanel.style.display === 'flex') {
+      console.log('Auto-reloading teams data');
+      loadTeams();
+    }
+  }, 10000); // 10 seconds interval
 });
 
 // Add socket event listener for penalty updates
@@ -1453,10 +1543,10 @@ team2PenaltyToggleBtn.addEventListener('click', () => {
 
 // Goal horn settings
 let goalHornSettings = {
-  enabled: true,
+  enabled: false,
   volume: 80,
-  team1Enabled: true,
-  team2Enabled: true,
+  team1Enabled: false,
+  team2Enabled: false,
   customSound: null
 };
 
@@ -1562,4 +1652,80 @@ document.addEventListener('DOMContentLoaded', () => {
       team2PenaltyToggleBtn.classList.toggle('active', !isVisible);
     });
   }
-}); 
+});
+
+// Period toggle
+const togglePeriodBtn = document.getElementById('toggle-period');
+
+// Add these missing helper functions
+function setTimerDisplay() {
+  timerDisplay.textContent = formatTime(gameState.timer.time);
+}
+
+function updateScoreDisplay() {
+  team1ScoreDisplay.textContent = gameState.teams.team1.score || 0;
+  team2ScoreDisplay.textContent = gameState.teams.team2.score || 0;
+  
+  // Also update local score tracking variables
+  team1Score = parseInt(gameState.teams.team1.score) || 0;
+  team2Score = parseInt(gameState.teams.team2.score) || 0;
+}
+
+function updatePeriodDisplay() {
+  periodDisplay.textContent = gameState.period;
+}
+
+function updatePenaltyDisplay(teamNum) {
+  if (teamNum === 1) {
+    team1PenaltyTime.textContent = formatTime(team1PenaltyTimeRemaining);
+  } else if (teamNum === 2) {
+    team2PenaltyTime.textContent = formatTime(team2PenaltyTimeRemaining);
+  }
+}
+
+function setPenalty(teamNum) {
+  const minutes = teamNum === 1 ? parseInt(team1PenaltyMins.value) || 0 : parseInt(team2PenaltyMins.value) || 0;
+  const seconds = teamNum === 1 ? parseInt(team1PenaltySecs.value) || 0 : parseInt(team2PenaltySecs.value) || 0;
+  const totalSeconds = (minutes * 60) + seconds;
+  
+  if (totalSeconds > 0) {
+    socket.emit('setPenalty', { 
+      team: `team${teamNum}`, 
+      active: true,
+      time: totalSeconds
+    });
+  }
+}
+
+function clearPenalty(teamNum) {
+  socket.emit('setPenalty', { 
+    team: `team${teamNum}`, 
+    active: false,
+    time: 0
+  });
+}
+
+function togglePenalty(teamNum) {
+  const isEnabled = teamNum === 1 ? team1PenaltyEnabled.checked : team2PenaltyEnabled.checked;
+  
+  if (isEnabled) {
+    // Enable penalty
+    setPenalty(teamNum);
+  } else {
+    // Disable penalty
+    clearPenalty(teamNum);
+  }
+}
+
+function updateTeamLogos() {
+  // If this function is referenced but not defined, add a simple implementation
+  // This is just a placeholder if it's not defined elsewhere
+  if (team1LogoInput.value) {
+    // If we had a team logo element, we would update it here
+    console.log('Updated team1 logo: ' + team1LogoInput.value);
+  }
+  if (team2LogoInput.value) {
+    // If we had a team logo element, we would update it here
+    console.log('Updated team2 logo: ' + team2LogoInput.value);
+  }
+} 
