@@ -124,6 +124,14 @@ const goalHornFile = document.getElementById('goal-horn-file');
 const goalHornVolume = document.getElementById('goal-horn-volume');
 const volumeValue = document.getElementById('volume-value');
 
+// Add DOM elements for quick score controls
+const quickTeam1ScoreDisplay = document.getElementById('quick-team1-score-display');
+const quickTeam1ScorePlusBtn = document.getElementById('quick-team1-score-plus');
+const quickTeam1ScoreMinusBtn = document.getElementById('quick-team1-score-minus');
+const quickTeam2ScoreDisplay = document.getElementById('quick-team2-score-display');
+const quickTeam2ScorePlusBtn = document.getElementById('quick-team2-score-plus');
+const quickTeam2ScoreMinusBtn = document.getElementById('quick-team2-score-minus');
+
 // Variables to track penalty times
 let team1PenaltyTimeRemaining = 0;
 let team2PenaltyTimeRemaining = 0;
@@ -1663,12 +1671,14 @@ function setTimerDisplay() {
 }
 
 function updateScoreDisplay() {
-  team1ScoreDisplay.textContent = gameState.teams.team1.score || 0;
-  team2ScoreDisplay.textContent = gameState.teams.team2.score || 0;
+  team1ScoreDisplay.textContent = gameState.teams.team1.score;
+  team2ScoreDisplay.textContent = gameState.teams.team2.score;
+  quickTeam1ScoreDisplay.textContent = gameState.teams.team1.score;
+  quickTeam2ScoreDisplay.textContent = gameState.teams.team2.score;
   
-  // Also update local score tracking variables
-  team1Score = parseInt(gameState.teams.team1.score) || 0;
-  team2Score = parseInt(gameState.teams.team2.score) || 0;
+  // Update the team score state
+  team1Score = gameState.teams.team1.score;
+  team2Score = gameState.teams.team2.score;
 }
 
 function updatePeriodDisplay() {
@@ -1728,4 +1738,33 @@ function updateTeamLogos() {
     // If we had a team logo element, we would update it here
     console.log('Updated team2 logo: ' + team2LogoInput.value);
   }
-} 
+}
+
+// Add event listeners for quick score controls
+quickTeam1ScorePlusBtn.addEventListener('click', () => {
+  gameState.teams.team1.score++;
+  updateScoreDisplay();
+  socket.emit('update-score', { team: 'team1', score: gameState.teams.team1.score });
+});
+
+quickTeam1ScoreMinusBtn.addEventListener('click', () => {
+  if (gameState.teams.team1.score > 0) {
+    gameState.teams.team1.score--;
+    updateScoreDisplay();
+    socket.emit('update-score', { team: 'team1', score: gameState.teams.team1.score });
+  }
+});
+
+quickTeam2ScorePlusBtn.addEventListener('click', () => {
+  gameState.teams.team2.score++;
+  updateScoreDisplay();
+  socket.emit('update-score', { team: 'team2', score: gameState.teams.team2.score });
+});
+
+quickTeam2ScoreMinusBtn.addEventListener('click', () => {
+  if (gameState.teams.team2.score > 0) {
+    gameState.teams.team2.score--;
+    updateScoreDisplay();
+    socket.emit('update-score', { team: 'team2', score: gameState.teams.team2.score });
+  }
+}); 

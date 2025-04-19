@@ -34,11 +34,29 @@
         <div class="timer-display">
           <span id="timer-display">15:00</span>
         </div>
-        <div class="controls timer-controls">
-          <button id="start-timer" class="btn primary">Start</button>
-          <button id="stop-timer" class="btn danger">Pause</button>
-          <button id="reset-timer" class="btn">Reset</button>
-          <button id="next-period" class="btn highlight">Next Period</button>
+        <div class="timer-scores">
+          <div class="timer-home-score">
+            <h3>Home Score</h3>
+            <div class="quick-score-control">
+              <button id="quick-team1-score-minus" class="btn score-btn">-</button>
+              <span id="quick-team1-score-display" class="score-display">0</span>
+              <button id="quick-team1-score-plus" class="btn score-btn">+</button>
+            </div>
+          </div>
+          <div class="timer-controls">
+            <button id="start-timer" class="btn primary">Start</button>
+            <button id="stop-timer" class="btn danger">Pause</button>
+            <button id="reset-timer" class="btn">Reset</button>
+            <button id="next-period" class="btn highlight">Next Period</button>
+          </div>
+          <div class="timer-away-score">
+            <h3>Away Score</h3>
+            <div class="quick-score-control">
+              <button id="quick-team2-score-minus" class="btn score-btn">-</button>
+              <span id="quick-team2-score-display" class="score-display">0</span>
+              <button id="quick-team2-score-plus" class="btn score-btn">+</button>
+            </div>
+          </div>
         </div>
         <div class="time-set">
           <label for="time-minutes">Set Time:</label>

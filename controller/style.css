@@ -187,11 +187,73 @@ main {
   border-radius: 8px;
 }
 
+/* Timer scores */
+.timer-scores {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.timer-home-score,
+.timer-away-score {
+  width: 30%;
+  text-align: center;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.timer-home-score h3,
+.timer-away-score h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.timer-home-score {
+  background-color: #e6f7ff;
+  border-color: #1a73e8;
+}
+
+.timer-away-score {
+  background-color: #fff0f0;
+  border-color: #e53935;
+}
+
 .timer-controls {
   display: flex;
   justify-content: center;
-  gap: 15px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1;
+}
+
+.quick-score-control {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.quick-score-control .score-display {
+  font-size: 24px;
+  font-weight: bold;
+  min-width: 40px;
+}
+
+.quick-score-control .score-btn {
+  font-size: 18px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .time-set {
@@ -218,6 +280,45 @@ main {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
+}
+
+/* Media query adjustments for smaller screens */
+@media (max-width: 768px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+
+  .game-config-section,
+  .game-section {
+    grid-column: 1;
+  }
+
+  .teams-section {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-display {
+    font-size: 36px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+  
+  .timer-scores {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .timer-home-score,
+  .timer-away-score {
+    width: 100%;
+  }
+  
+  .timer-controls {
+    width: 100%;
+    margin: 10px 0;
+  }
 }
 
 /* Team controls */
@@ -389,31 +490,6 @@ footer {
   border-top: 1px solid #ddd;
   font-size: 14px;
   color: #777;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  main {
-    grid-template-columns: 1fr;
-  }
-  
-  .game-config-section,
-  .game-section,
-  .period-section {
-    grid-column: 1;
-  }
-  
-  .teams-section {
-    grid-template-columns: 1fr;
-  }
-  
-  .timer-display {
-    font-size: 36px;
-  }
-  
-  h1 {
-    font-size: 24px;
-  }
 }
 
 /* Update Next Period button styling */
