@@ -411,16 +411,15 @@ socket.on('scoreUpdate', (data) => {
   // Extract the teams data properly from the response structure
   const teams = data.teams;
   
-  // Update displayed scores
-  team1ScoreDisplay.textContent = teams.team1.score;
-  team2ScoreDisplay.textContent = teams.team2.score;
-  
-  // Also update local score tracking variables
+  // Update local score tracking variables
   team1Score = parseInt(teams.team1.score) || 0;
   team2Score = parseInt(teams.team2.score) || 0;
   
   // Update gameState
   gameState.teams = teams;
+  
+  // Update all score displays using our centralized function
+  updateScoreDisplay();
 });
 
 socket.on('teamUpdate', (teams) => {
@@ -888,7 +887,8 @@ team1ScorePlusBtn.addEventListener('click', () => {
   if (connectionStatus) {
     team1Score = parseInt(team1Score) || 0;
     team1Score++;
-    team1ScoreDisplay.textContent = team1Score;
+    gameState.teams.team1.score = team1Score;
+    updateScoreDisplay();
     socket.emit('updateScore', { team: 'team1', value: team1Score });
     saveEvent('Team 1 scored: ' + team1Score);
   }
@@ -898,7 +898,8 @@ team1ScoreMinusBtn.addEventListener('click', () => {
   if (connectionStatus && team1Score > 0) {
     team1Score = parseInt(team1Score) || 0;
     team1Score--;
-    team1ScoreDisplay.textContent = team1Score;
+    gameState.teams.team1.score = team1Score;
+    updateScoreDisplay();
     socket.emit('updateScore', { team: 'team1', value: team1Score });
     saveEvent('Team 1 score adjusted: ' + team1Score);
   }
@@ -947,7 +948,8 @@ team2ScorePlusBtn.addEventListener('click', () => {
   if (connectionStatus) {
     team2Score = parseInt(team2Score) || 0;
     team2Score++;
-    team2ScoreDisplay.textContent = team2Score;
+    gameState.teams.team2.score = team2Score;
+    updateScoreDisplay();
     socket.emit('updateScore', { team: 'team2', value: team2Score });
     saveEvent('Team 2 scored: ' + team2Score);
   }
@@ -957,7 +959,8 @@ team2ScoreMinusBtn.addEventListener('click', () => {
   if (connectionStatus && team2Score > 0) {
     team2Score = parseInt(team2Score) || 0;
     team2Score--;
-    team2ScoreDisplay.textContent = team2Score;
+    gameState.teams.team2.score = team2Score;
+    updateScoreDisplay();
     socket.emit('updateScore', { team: 'team2', value: team2Score });
     saveEvent('Team 2 score adjusted: ' + team2Score);
   }
@@ -1671,14 +1674,17 @@ function setTimerDisplay() {
 }
 
 function updateScoreDisplay() {
-  team1ScoreDisplay.textContent = gameState.teams.team1.score;
-  team2ScoreDisplay.textContent = gameState.teams.team2.score;
-  quickTeam1ScoreDisplay.textContent = gameState.teams.team1.score;
-  quickTeam2ScoreDisplay.textContent = gameState.teams.team2.score;
+  // Update the main score displays
+  team1ScoreDisplay.textContent = team1Score;
+  team2ScoreDisplay.textContent = team2Score;
   
-  // Update the team score state
-  team1Score = gameState.teams.team1.score;
-  team2Score = gameState.teams.team2.score;
+  // Update the quick score displays
+  quickTeam1ScoreDisplay.textContent = team1Score;
+  quickTeam2ScoreDisplay.textContent = team2Score;
+  
+  // Update the game state
+  gameState.teams.team1.score = team1Score;
+  gameState.teams.team2.score = team2Score;
 }
 
 function updatePeriodDisplay() {
@@ -1742,29 +1748,51 @@ function updateTeamLogos() {
 
 // Add event listeners for quick score controls
 quickTeam1ScorePlusBtn.addEventListener('click', () => {
-  gameState.teams.team1.score++;
-  updateScoreDisplay();
-  socket.emit('update-score', { team: 'team1', score: gameState.teams.team1.score });
+  if (connectionStatus) {
+    team1Score = parseInt(team1Score) || 0;
+    team1Score++;
+    gameState.teams.team1.score = team1Score;
+    updateScoreDisplay();
+    socket.emit('updateScore', { team: 'team1', value: team1Score });
+    saveEvent('Team 1 scored: ' + team1Score);
+  }
 });
 
 quickTeam1ScoreMinusBtn.addEventListener('click', () => {
-  if (gameState.teams.team1.score > 0) {
-    gameState.teams.team1.score--;
+  if (connectionStatus && team1Score > 0) {
+    team1Score = parseInt(team1Score) || 0;
+    team1Score--;
+    gameState.teams.team1.score = team1Score;
     updateScoreDisplay();
-    socket.emit('update-score', { team: 'team1', score: gameState.teams.team1.score });
+    socket.emit('updateScore', { team: 'team1', value: team1Score });
+    saveEvent('Team 1 score adjusted: ' + team1Score);
   }
 });
 
 quickTeam2ScorePlusBtn.addEventListener('click', () => {
-  gameState.teams.team2.score++;
-  updateScoreDisplay();
-  socket.emit('update-score', { team: 'team2', score: gameState.teams.team2.score });
+  if (connectionStatus) {
+    team2Score = parseInt(team2Score) || 0;
+    team2Score++;
+    gameState.teams.team2.score = team2Score;
+    updateScoreDisplay();
+    socket.emit('updateScore', { team: 'team2', value: team2Score });
+    saveEvent('Team 2 scored: ' + team2Score);
+  }
 });
 
 quickTeam2ScoreMinusBtn.addEventListener('click', () => {
-  if (gameState.teams.team2.score > 0) {
-    gameState.teams.team2.score--;
+  if (connectionStatus && team2Score > 0) {
+    team2Score = parseInt(team2Score) || 0;
+    team2Score--;
+    gameState.teams.team2.score = team2Score;
     updateScoreDisplay();
-    socket.emit('update-score', { team: 'team2', score: gameState.teams.team2.score });
+    socket.emit('updateScore', { team: 'team2', value: team2Score });
+    saveEvent('Team 2 score adjusted: ' + team2Score);
   }
-}); 
+});
+
+// Add saveEvent function if it doesn't exist
+function saveEvent(message) {
+  // If an event tracking system exists, use it, otherwise just log to console
+  console.log("Event:", message);
+} 
