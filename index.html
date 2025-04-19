@@ -26,7 +26,7 @@
     }
     
     .container {
-      max-width: 800px;
+      max-width: 900px;
       text-align: center;
       background-color: white;
       border-radius: 10px;
@@ -58,14 +58,17 @@
     
     .teams {
       display: flex;
-      justify-content: space-around;
+      justify-content: center;
       margin: 30px 0;
       flex-wrap: wrap;
+      gap: 20px;
     }
     
     .team {
       padding: 15px;
       text-align: center;
+      width: calc(33.33% - 30px);
+      max-width: 200px;
     }
     
     .team img {
@@ -83,6 +86,7 @@
     .team h3 {
       margin-top: 10px;
       color: #333;
+      font-size: 14px;
     }
     
     .buttons {
@@ -125,6 +129,20 @@
       .container {
         padding: 20px;
       }
+      
+      .teams {
+        gap: 10px;
+      }
+      
+      .team {
+        width: calc(50% - 20px);
+        padding: 10px;
+      }
+      
+      .team img {
+        width: 80px;
+        height: 80px;
+      }
     }
   </style>
 </head>
@@ -135,16 +153,16 @@
     
     <div class="teams">
       <div class="team">
-        <img src="assets/Anteaters_Official_Logo.png" alt="ASOKE Anteaters">
-        <h3>ASOKE Anteaters</h3>
+        <img src="assets/SISL_Official_Logo.png" alt="Siam Inline Super League">
+        <h3>Siam Inline Super League</h3>
       </div>
       <div class="team">
-        <img src="assets/Bladez_Official_Logo.png" alt="BKK Baebladez">
-        <h3>BKK Baebladez</h3>
+        <img src="assets/BHRC_Official_Logo.png" alt="BRHC">
+        <h3>BRHC</h3>
       </div>
       <div class="team">
-        <img src="assets/Raiders_Official_Logo.png" alt="Rattanakorn Raiders">
-        <h3>Rattanakorn Raiders</h3>
+        <img src="assets/HDC_Official_Logo.png" alt="Hockey Development Center">
+        <h3>HDC</h3>
       </div>
     </div>
     
