@@ -11,8 +11,8 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - SUPABASE_URL=https://jeatmebkzspsjxtyuepr.supabase.co
-      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplYXRtZWJrenNwc2p4dHl1ZXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5NzQ5NjEsImV4cCI6MjA2MDU1MDk2MX0.0G1LcZZ6O9YUG6es3zD6MSiIwo9T6w3wjITSxy5hMSs
+      - SUPABASE_URL=
+      - SUPABASE_KEY=
     volumes:
       - ./assets:/app/assets
     networks:
