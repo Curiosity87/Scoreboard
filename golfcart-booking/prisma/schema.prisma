@@ -1,0 +1,139 @@
+// Datamodell för bokningssystemet.
+// Viktig regel: dubbelbokningsskydd ligger på DATABASNIVÅ via en
+// exclusion constraint (btree_gist) som läggs till i migrationen
+// "init" – se migration.sql. Prisma kan inte uttrycka den i schemat.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum CartStatus {
+  ACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+enum BookingStatus {
+  AWAITING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  EXPIRED
+}
+
+enum BookingOrigin {
+  CUSTOMER
+  ADMIN
+}
+
+enum PaymentProviderKind {
+  MANUAL_SWISH
+  SWISH
+  MOCK
+}
+
+enum PaymentState {
+  PENDING
+  PAID
+  DECLINED
+  ERROR
+  REFUNDED
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  phone          String? // E.164, valfritt i Fas 1
+  passwordHash   String?   @map("password_hash") // null när BankID-konto utan lösenord (Fas 3)
+  role           Role      @default(CUSTOMER)
+  bankidVerified Boolean   @default(false) @map("bankid_verified")
+  bankidSubject  String?   @map("bankid_subject")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  bookings       Booking[]
+  confirmedPayments Payment[] @relation("PaymentConfirmedBy")
+
+  @@map("users")
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  name       String     @unique // t.ex. "Bil 3"
+  model      String     @default("Yamaha Drive2")
+  status     CartStatus @default(ACTIVE)
+  // Aktuell kod till bilens nyckelskåp/lås. Får ALDRIG exponeras för kund
+  // förrän kundens bokning är CONFIRMED (betald).
+  unlockCode String     @map("unlock_code")
+  note       String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+  bookings   Booking[]
+
+  @@map("carts")
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  cartId    String        @map("cart_id")
+  userId    String        @map("user_id")
+  startTime DateTime      @map("start_time")
+  endTime   DateTime      @map("end_time")
+  status    BookingStatus @default(AWAITING_PAYMENT)
+  // Pris i ören (heltal) – låst vid bokningstillfället även om priset ändras senare.
+  priceAmount Int         @map("price_amount")
+  // Kort unik kod kunden anger i Swish-meddelandet, t.ex. "GB-4F2A".
+  // Nyckeln för att admin snabbt ska matcha inbetalning mot bokning.
+  paymentReference String @unique @map("payment_reference")
+  // När den tillfälliga reservationen släpps om betalningen inte bekräftats.
+  holdExpiresAt        DateTime? @map("hold_expires_at")
+  unlockCodeReleasedAt DateTime? @map("unlock_code_released_at")
+  createdBy BookingOrigin @default(CUSTOMER) @map("created_by")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  cart     Cart      @relation(fields: [cartId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+  payments Payment[]
+
+  @@index([cartId, startTime])
+  @@index([status, holdExpiresAt])
+  @@map("bookings")
+}
+
+model Payment {
+  id                String              @id @default(cuid())
+  bookingId         String              @map("booking_id")
+  provider          PaymentProviderKind
+  providerRef       String?             @map("provider_ref") // null i manuellt flöde, Swish paymentReference i Fas 2
+  amount            Int // ören
+  status            PaymentState        @default(PENDING)
+  confirmedByUserId String?             @map("confirmed_by_user_id") // vilken admin som markerade betald
+  rawCallback       Json?               @map("raw_callback") // Swish-callback (Fas 2)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  paidAt            DateTime?           @map("paid_at")
+
+  booking     Booking @relation(fields: [bookingId], references: [id])
+  confirmedBy User?   @relation("PaymentConfirmedBy", fields: [confirmedByUserId], references: [id])
+
+  @@map("payments")
+}
+
+// En enda rad (id = 1) med driftinställningar som admin kan ändra i UI:t.
+model Settings {
+  id          Int      @id @default(1)
+  swishPhone  String   @map("swish_phone") // numret kunden ska Swisha till
+  priceAmount Int      @map("price_amount") // pris per pass i ören
+  slotMinutes Int      @default(300) @map("slot_minutes") // passlängd (default 5 h)
+  holdMinutes Int      @default(30) @map("hold_minutes") // hur länge en obetald bokning håller tiden
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
